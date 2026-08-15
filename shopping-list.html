@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Shop Ledger</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root{
+  --paper:#EFF1E8;
+  --card:#FCFBF6;
+  --form-bg:#FBFAF4;
+  --ink:#1F2A1D;
+  --ink-soft:#5C6455;
+  --ink-faint:#8B9280;
+  --line:#D9DBCB;
+  --green:#2F6B3F;
+  --green-soft:#DEEBDE;
+  --green-deep:#1F4A2A;
+  --amber:#B9722A;
+  --amber-soft:#F3E4CF;
+  --amber-deep:#8A5A12;
+  --danger:#B5432E;
+  --radius:14px;
+}
+
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:640px;margin:0 auto;padding:0 0 90px;}
+
+/* Header */
+header{
+  position:sticky;top:0;z-index:20;
+  background:var(--paper);
+  padding:12px 16px 10px;
+  border-bottom:1px solid var(--line);
+}
+.title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+h1{font-family:'Archivo',sans-serif;font-weight:800;font-size:21px;letter-spacing:-0.02em;margin:0;}
+h1 .dot{color:var(--green);}
+.icon-btns{display:flex;gap:6px;flex-shrink:0;}
+.icon-btn{
+  background:none;border:1px solid var(--line);border-radius:9px;
+  width:32px;height:32px;font-size:14px;color:var(--ink-soft);cursor:pointer;
+}
+.icon-btn.is-active{border-color:var(--green);color:var(--green-deep);background:var(--green-soft);}
+.stats-line{font-size:11.5px;color:var(--ink-faint);margin-top:2px;}
+
+/* Settings / Sort panels */
+.panel{
+  margin-top:10px;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--radius);padding:14px 16px;display:none;
+}
+.panel.open{display:block;}
+.settings-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;}
+.settings-row + .settings-row{border-top:1px dashed var(--line);}
+.settings-label{font-size:13px;font-weight:500;}
+.settings-label small{display:block;color:var(--ink-faint);font-weight:400;margin-top:2px;}
+.pct-input{
+  width:64px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:14px;
+  border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff;color:var(--ink);
+}
+.settings-block{padding:10px 0;}
+.settings-block + .settings-block{border-top:1px dashed var(--line);}
+.chip-list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}
+.chip{
+  display:flex;align-items:center;gap:5px;background:var(--green-soft);color:var(--green-deep);
+  font-size:12px;font-weight:600;padding:4px 6px 4px 10px;border-radius:20px;
+}
+.chip button{background:none;border:none;color:var(--green-deep);font-size:13px;cursor:pointer;padding:0 2px;line-height:1;opacity:0.6;}
+.chip button:active{opacity:1;}
+.chip-add{display:flex;gap:6px;}
+.chip-add input{flex:1;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);}
+.chip-add button{background:var(--card);border:1px solid var(--line);border-radius:8px;width:34px;font-size:16px;color:var(--green-deep);cursor:pointer;}
+
+.sort-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;}
+.sort-row + .sort-row{border-top:1px dashed var(--line);}
+.sort-row label{font-size:13px;font-weight:500;color:var(--ink);flex-shrink:0;}
+.sort-select{
+  flex:1;max-width:190px;font-size:13px;padding:7px 8px;border:1px solid var(--line);
+  border-radius:8px;background:#fff;color:var(--ink);
+}
+
+/* Search */
+.field-wrap{flex:1;position:relative;}
+.search-row{position:relative;display:flex;align-items:center;margin-top:8px;}
+.search-icon{position:absolute;left:12px;color:var(--ink-faint);font-size:15px;pointer-events:none;}
+.search-row input{
+  width:100%;padding:9px 34px 9px 32px;border-radius:10px;border:1px solid var(--line);
+  font-size:14px;font-family:'Inter',sans-serif;background:#fff;color:var(--ink);
+}
+.search-row input:focus{outline:2px solid var(--green);outline-offset:1px;}
+.clear-search{position:absolute;right:8px;background:none;border:none;color:var(--ink-faint);font-size:13px;cursor:pointer;padding:4px;}
+
+/* Suggestion dropdown */
+.suggest-box{
+  position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:40;background:#fff;
+  border:1px solid var(--line);border-radius:9px;box-shadow:0 6px 16px rgba(20,25,15,0.12);
+  max-height:170px;overflow-y:auto;display:none;
+}
+.suggest-item{padding:9px 12px;font-size:13.5px;color:var(--ink);cursor:pointer;border-bottom:1px solid var(--line);}
+.suggest-item:last-child{border-bottom:none;}
+.suggest-item:active{background:var(--green-soft);}
+.suggest-item .match{font-weight:700;color:var(--green-deep);}
+
+/* Product list */
+.list{padding:14px 12px 0;display:flex;flex-direction:column;gap:12px;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--ink-faint);}
+.empty-state .big{font-size:36px;margin-bottom:8px;}
+.empty-state p{font-size:14px;margin:4px 0;}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+.card.done{opacity:0.55;}
+.card.done .card-name{text-decoration:line-through;color:var(--ink-faint);}
+
+.card-head{display:flex;align-items:flex-start;gap:10px;padding:14px 14px;cursor:pointer;}
+.tick{
+  width:24px;height:24px;border-radius:7px;border:1.5px solid var(--line);background:#fff;
+  flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:14px;color:transparent;
+}
+.tick.checked{background:var(--green);border-color:var(--green);color:#fff;}
+.card-name-wrap{flex:1;min-width:0;}
+.card-name{font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;border:none;background:none;color:var(--ink);width:100%;padding:0;}
+.card-name:focus{outline:none;border-bottom:1px solid var(--green);}
+.best-line{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12.5px;color:var(--ink-soft);flex-wrap:wrap;}
+.best-tag{
+  background:var(--green-soft);color:var(--green-deep);font-family:'Archivo',sans-serif;font-weight:700;
+  font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;
+}
+.pref-tag{
+  background:var(--amber-soft);color:var(--amber-deep);font-family:'Archivo',sans-serif;font-weight:700;
+  font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;
+}
+.best-price{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ink);}
+.no-entries{font-size:12.5px;color:var(--ink-faint);font-style:italic;margin-top:4px;}
+.chev{color:var(--ink-faint);font-size:13px;transition:transform .15s ease;flex-shrink:0;padding:4px;margin-top:2px;}
+.card.open .chev{transform:rotate(90deg);}
+.del-product{background:none;border:none;color:var(--ink-faint);font-size:16px;cursor:pointer;padding:4px 6px;flex-shrink:0;}
+.del-product:active{color:var(--danger);}
+
+/* Entries */
+.entries{display:none;border-top:1px dashed var(--line);}
+.card.open .entries{display:block;}
+.entries-toolbar{display:flex;justify-content:flex-end;padding:8px 14px 0;}
+.item-note-wrap{padding:10px 14px 0;}
+.item-note-input{
+  width:100%;padding:8px 10px;border-radius:8px;border:1px dashed var(--line);
+  font-size:12.5px;font-style:italic;background:transparent;color:var(--ink-soft);font-family:'Inter',sans-serif;
+}
+.item-note-input:focus{outline:none;border-style:solid;border-color:var(--green);background:#fff;font-style:normal;color:var(--ink);}
+.expand-all-btn{background:none;border:none;color:var(--green-deep);font-size:12px;font-weight:600;cursor:pointer;padding:4px 6px;}
+
+.entry-wrap{border-bottom:1px dashed var(--line);}
+.ec{display:flex;align-items:center;gap:8px;padding:11px 14px;}
+.ec-tap{flex:1;min-width:0;cursor:pointer;}
+.ec-line1{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--ink);}
+.ec-line1 .placeholder{color:var(--ink-faint);font-weight:500;font-style:italic;}
+.ec-line2{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:3px;}
+.mini-badge{font-size:9.5px;padding:2px 6px;border-radius:20px;font-weight:700;white-space:nowrap;}
+.mini-badge.special{background:var(--amber-soft);color:var(--amber-deep);}
+.mini-badge.pref{background:var(--amber-soft);color:var(--amber-deep);}
+.mini-badge.best{background:var(--green-soft);color:var(--green-deep);}
+.mini-badge.origin{background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);}
+.ec-price{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13.5px;text-align:right;white-space:nowrap;flex-shrink:0;}
+.ec-price .unit{font-size:9.5px;color:var(--ink-faint);font-weight:500;}
+.ec-price .orig{display:block;font-size:10px;color:var(--ink-faint);text-decoration:line-through;font-weight:500;}
+.ec-actions{display:flex;gap:2px;flex-shrink:0;}
+.mini-icon-btn{background:none;border:none;font-size:14px;cursor:pointer;padding:4px;opacity:0.4;}
+.mini-icon-btn.active{opacity:1;}
+.mini-icon-btn:active{opacity:1;}
+
+.entry-form{padding:2px 14px 14px;background:var(--form-bg);border-top:1px dashed var(--line);}
+.entry-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px 8px;padding-top:10px;}
+.field{display:flex;flex-direction:column;gap:2px;position:relative;}
+.field label{font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-faint);font-weight:600;}
+.field input, .field select{
+  font-family:'Inter',sans-serif;font-size:13.5px;border:1px solid var(--line);border-radius:7px;
+  padding:6px 8px;background:#fff;color:var(--ink);width:100%;
+}
+.field.num input{font-family:'JetBrains Mono',monospace;}
+.field.full{grid-column:1/-1;}
+.field input:focus, .field select:focus{outline:2px solid var(--green);outline-offset:0;}
+
+.toggle-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin-top:10px;}
+.toggle-row input{width:13px;height:13px;accent-color:var(--green);}
+
+.quality-row{display:flex;align-items:center;gap:10px;margin-top:10px;}
+.quality-row > label{font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-faint);font-weight:600;}
+.quality-buttons{display:flex;gap:4px;}
+.quality-buttons button{background:#fff;border:1px solid var(--line);border-radius:8px;font-size:16px;padding:4px 9px;cursor:pointer;opacity:0.35;}
+.quality-buttons button.active{opacity:1;border-color:var(--amber);background:var(--amber-soft);}
+
+.form-actions{display:flex;justify-content:space-between;align-items:center;margin-top:12px;}
+.form-actions .left-btns{display:flex;gap:6px;}
+.text-btn{background:none;border:1px solid var(--line);border-radius:8px;font-size:12px;padding:6px 10px;cursor:pointer;color:var(--ink-soft);}
+.text-btn.pref-active{border-color:var(--amber);background:var(--amber-soft);color:var(--amber-deep);}
+.text-btn.danger:active{color:var(--danger);border-color:var(--danger);}
+
+.add-entry-btn{
+  width:100%;padding:12px;background:none;border:none;border-top:1px solid var(--line);
+  color:var(--green-deep);font-weight:600;font-size:13.5px;cursor:pointer;font-family:'Inter',sans-serif;
+}
+.add-entry-btn:active{background:var(--green-soft);}
+
+.toast{
+  position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:var(--ink);color:#fff;padding:9px 16px;border-radius:20px;font-size:12.5px;
+  opacity:0;transition:opacity .2s ease, transform .2s ease;pointer-events:none;z-index:50;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.modal-add-btn{background:var(--green);color:#fff;border:none;border-radius:10px;padding:0 20px;font-weight:600;font-size:22px;cursor:pointer;}
+.modal-add-btn:active{background:var(--green-deep);}
+
+/* Colored store tag pills */
+.store-pill{
+  display:inline-flex;align-items:center;padding:1px 8px;border-radius:20px;
+  font-weight:700;font-size:inherit;line-height:1.5;
+}
+.brand-pill{
+  display:inline-flex;align-items:center;padding:0px 7px;border-radius:20px;
+  font-weight:600;font-size:inherit;line-height:1.5;border:1.4px solid currentColor;background:transparent;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title-row">
+      <h1>Shop<span class="dot">·</span>Ledger</h1>
+      <div class="icon-btns">
+        <button class="icon-btn" id="searchBtn" title="Search">⌕</button>
+        <button class="icon-btn" id="addBtn" title="Add item">+</button>
+        <button class="icon-btn" id="importBtn" title="Import">⬆</button>
+        <button class="icon-btn" id="sortBtn" title="Sort">↕</button>
+        <button class="icon-btn" id="gearBtn" title="Settings">⚙</button>
+      </div>
+    </div>
+    <div class="stats-line" id="statsLine">Your ledger is empty</div>
+
+    <div class="panel" id="searchPanel">
+      <div class="search-row" style="margin-top:0;">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="searchInput" placeholder="Search items, stores, brands or notes…" autocomplete="off">
+        <button class="clear-search" id="clearSearch" style="display:none;">✕</button>
+      </div>
+    </div>
+
+    <div class="panel" id="addPanel">
+      <div class="search-row" style="margin-top:0;">
+        <div class="field-wrap">
+          <input type="text" id="newProductInput" placeholder="Add an item, e.g. Olive oil" autocomplete="off">
+        </div>
+        <button class="modal-add-btn" id="addProductBtn" style="margin-left:8px;">+</button>
+      </div>
+    </div>
+
+    <div class="panel" id="importPanel">
+      <div class="settings-label" style="margin-bottom:6px;">Import from CSV<small>In Notion: ••• menu → Export → CSV. Upload the file directly, or open it and paste the contents below. One row per item/store — items with the same name are grouped automatically.</small></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <label class="text-btn" for="importFileInput" style="flex:1;text-align:center;padding:10px;cursor:pointer;">📂 Upload CSV file</label>
+        <input type="file" id="importFileInput" accept=".csv,text/csv" style="display:none;">
+      </div>
+      <textarea id="importText" placeholder="…or paste CSV text here&#10;Item,Store,Brand,Price,Qty,Unit,Notes,Origin&#10;Milk,Woolworths,Coles Full Cream,3.50,2,L,,Australia" style="width:100%;min-height:110px;font-family:'JetBrains Mono',monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fff;color:var(--ink);resize:vertical;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="text-btn" id="importCsvBtn" style="flex:1;text-align:center;padding:10px;background:var(--green);color:#fff;border:none;font-weight:600;">Import rows</button>
+        <button class="text-btn" id="exportCsvBtn" style="flex:1;text-align:center;padding:10px;">⬇ Download CSV</button>
+      </div>
+      <div id="importResult" style="font-size:12px;color:var(--ink-soft);margin-top:8px;"></div>
+    </div>
+
+    <div class="panel" id="sortPanel">
+      <div class="sort-row">
+        <label>Sort by</label>
+        <select class="sort-select" id="sortPrimary"></select>
+      </div>
+      <div class="sort-row">
+        <label>Then by</label>
+        <select class="sort-select" id="sortSecondary"></select>
+      </div>
+      <div class="sort-row">
+        <label>Then by</label>
+        <select class="sort-select" id="sortTertiary"></select>
+      </div>
+    </div>
+
+    <div class="panel" id="settingsPanel">
+      <div class="settings-row">
+        <div class="settings-label">Woolworths monthly discount<small>e.g. member deal</small></div>
+        <input type="number" class="pct-input" id="woolMonthly" value="10" min="0" max="100" step="0.5">
+      </div>
+      <div class="settings-row">
+        <div class="settings-label">Gift card discount<small>e.g. bought at a discount</small></div>
+        <input type="number" class="pct-input" id="woolGiftcard" value="4" min="0" max="100" step="0.5">
+      </div>
+      <div class="settings-row">
+        <div class="settings-label" style="font-weight:700;">Combined effective discount</div>
+        <span class="pct-input" id="woolCombined" style="border:none;background:none;font-weight:700;">13.4%</span>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Your stores<small>Shows up as suggestions when typing a store</small></div>
+        <div class="chip-list" id="storeChips"></div>
+        <div class="chip-add">
+          <input type="text" id="newStoreChip" placeholder="Add a store, e.g. Harris Farm">
+          <button id="addStoreChip">+</button>
+        </div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Your brands<small>Grows automatically as you type new ones too</small></div>
+        <div class="chip-list" id="brandChips"></div>
+        <div class="chip-add">
+          <input type="text" id="newBrandChip" placeholder="Add a brand, e.g. Bulla">
+          <button id="addBrandChip">+</button>
+        </div>
+      </div>
+    </div>
+    <datalist id="storeDatalist"></datalist>
+    <datalist id="brandDatalist"></datalist>
+  </header>
+
+  <div class="list" id="productList"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'shop-ledger-data';
+
+const DEFAULT_SETTINGS = {
+  woolMonthly: 10, woolGiftcard: 4,
+  stores: ['Woolworths','Coles','Aldi','IGA','Costco','Chemist Warehouse'],
+  brands: [],
+  sort: { primary:'none', secondary:'none', tertiary:'none' }
+};
+
+let state = { products: [], settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) };
+let openCardId = null;
+let expandedEntries = new Set(); // session-only UI state, not persisted
+let focusedField = null; // {entryId, role}
+let searchQuery = '';
+
+const unitOptions = ['g','kg','ml','L','ea'];
+const unitMeta = {
+  g:  { family:'mass',   toBase: v=>v/1000, baseLabel:'kg' },
+  kg: { family:'mass',   toBase: v=>v,      baseLabel:'kg' },
+  ml: { family:'volume', toBase: v=>v/1000, baseLabel:'L'  },
+  L:  { family:'volume', toBase: v=>v,      baseLabel:'L'  },
+  ea: { family:'count',  toBase: v=>v,      baseLabel:'ea' }
+};
+
+const SORT_FIELDS = [
+  { value:'none', label:'None' },
+  { value:'name-asc', label:'Item name (A–Z)' },
+  { value:'name-desc', label:'Item name (Z–A)' },
+  { value:'store-asc', label:'Store (A–Z)' },
+  { value:'store-desc', label:'Store (Z–A)' },
+  { value:'unticked-first', label:'Not ticked first' },
+  { value:'ticked-first', label:'Ticked first' }
+];
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+function sanitizeNumericInput(raw){
+  let v = (raw||'').replace(',', '.').replace(/[^0-9.]/g, '');
+  const firstDot = v.indexOf('.');
+  if(firstDot !== -1){
+    v = v.slice(0, firstDot+1) + v.slice(firstDot+1).replace(/\./g, '');
+  }
+  return v;
+}
+
+function sortAlpha(list){
+  return [...list].sort((a,b)=>a.localeCompare(b, undefined, {sensitivity:'base'}));
+}
+
+function combinedDiscount(){
+  const m = Number(state.settings.woolMonthly)||0;
+  const g = Number(state.settings.woolGiftcard)||0;
+  return 1 - (1-m/100)*(1-g/100);
+}
+
+function computeUnitPrice(priceValue, entry){
+  const price = Number(priceValue);
+  const qty = Number(entry.qty);
+  if(!price || !qty) return null;
+  const meta = unitMeta[entry.unit] || unitMeta.ea;
+  const baseQty = meta.toBase(qty);
+  if(!baseQty) return null;
+  return { raw: price/baseQty, family: meta.family, baseLabel: meta.baseLabel };
+}
+
+function effectiveUnitPrice(entry){
+  const base = computeUnitPrice(entry.price, entry);
+  if(!base) return null;
+  const eff = entry.isWool ? base.raw*(1-combinedDiscount()) : base.raw;
+  return { raw: base.raw, eff, family: base.family, baseLabel: base.baseLabel };
+}
+
+function bestEntry(product){
+  const byFamily = {};
+  for(const e of product.entries){
+    const calc = effectiveUnitPrice(e);
+    if(!calc) continue;
+    if(!byFamily[calc.family] || calc.eff < byFamily[calc.family].eff){
+      byFamily[calc.family] = { entry:e, eff:calc.eff, baseLabel:calc.baseLabel };
+    }
+  }
+  const families = Object.keys(byFamily);
+  if(families.length===0) return null;
+  let headlineFamily = families[0], maxCount = -1;
+  for(const fam of families){
+    const count = product.entries.filter(e=>{
+      const meta = unitMeta[e.unit] || unitMeta.ea;
+      return meta.family===fam && effectiveUnitPrice(e);
+    }).length;
+    if(count>maxCount){ maxCount=count; headlineFamily=fam; }
+  }
+  return { byFamily, headline: byFamily[headlineFamily], familyCount: families.length };
+}
+
+function updateStatsLine(){
+  const el = document.getElementById('statsLine');
+  const total = state.products.length;
+  if(total===0){ el.textContent = 'Your ledger is empty'; return; }
+  const done = state.products.filter(p=>p.tick).length;
+  el.textContent = `${total} item${total===1?'':'s'} · ${done} done`;
+}
+
+// Deterministic color per store name, so the same store always gets the same tag color
+const STORE_PALETTE = [
+  { bg:'#DEEBDE', text:'#1F4A2A' }, // green
+  { bg:'#F3E4CF', text:'#8A5A12' }, // amber
+  { bg:'#DCE7F3', text:'#1E4B7A' }, // blue
+  { bg:'#EBDDF0', text:'#5C2A7A' }, // purple
+  { bg:'#DCEFEC', text:'#146B5F' }, // teal
+  { bg:'#F5DFE3', text:'#93304A' }, // rose
+  { bg:'#E5E3D6', text:'#5A5636' }, // olive
+  { bg:'#DEE3F3', text:'#33397A' }  // indigo
+];
+function getStoreColor(name){
+  const s = (name||'').trim().toLowerCase();
+  if(!s) return { bg:'transparent', text:'inherit' };
+  let hash = 0;
+  for(let i=0;i<s.length;i++){ hash = (hash*31 + s.charCodeAt(i)) >>> 0; }
+  return STORE_PALETTE[hash % STORE_PALETTE.length];
+}
+function storePill(name){
+  if(!name) return escapeHtml('—');
+  const c = getStoreColor(name);
+  return `<span class="store-pill" style="background:${c.bg};color:${c.text};">${escapeHtml(name)}</span>`;
+}
+
+function getBrandColor(name){
+  const s = (name||'').trim().toLowerCase();
+  if(!s) return { bg:'transparent', text:'inherit' };
+  let hash = 0;
+  // offset multiplier so brand colors land differently than store colors even for similar names
+  for(let i=0;i<s.length;i++){ hash = (hash*17 + s.charCodeAt(i) + 7) >>> 0; }
+  return STORE_PALETTE[hash % STORE_PALETTE.length];
+}
+function brandPill(name){
+  if(!name) return '';
+  const c = getBrandColor(name);
+  return `<span class="brand-pill" style="color:${c.text};">${escapeHtml(name)}</span>`;
+}
+
+const COUNTRY_FLAGS = {
+  'australia':'🇦🇺','new zealand':'🇳🇿','canada':'🇨🇦','usa':'🇺🇸','united states':'🇺🇸',
+  'uk':'🇬🇧','united kingdom':'🇬🇧','india':'🇮🇳','china':'🇨🇳','italy':'🇮🇹','italia':'🇮🇹',
+  'thailand':'🇹🇭','vietnam':'🇻🇳','france':'🇫🇷','germany':'🇩🇪','japan':'🇯🇵','spain':'🇪🇸',
+  'mexico':'🇲🇽','netherlands':'🇳🇱','south korea':'🇰🇷','korea':'🇰🇷','indonesia':'🇮🇩',
+  'philippines':'🇵🇭','malaysia':'🇲🇾','sri lanka':'🇱🇰','pakistan':'🇵🇰','bangladesh':'🇧🇩',
+  'turkey':'🇹🇷','greece':'🇬🇷','egypt':'🇪🇬','south africa':'🇿🇦','brazil':'🇧🇷','argentina':'🇦🇷',
+  'chile':'🇨🇱','peru':'🇵🇪','ireland':'🇮🇪','poland':'🇵🇱','portugal':'🇵🇹','sweden':'🇸🇪',
+  'switzerland':'🇨🇭','belgium':'🇧🇪','denmark':'🇩🇰','norway':'🇳🇴','fiji':'🇫🇯','israel':'🇮🇱'
+};
+const COUNTRY_CODES = {
+  'australia':'AUS','new zealand':'NZ','canada':'CAN','usa':'USA','united states':'USA',
+  'uk':'UK','united kingdom':'UK','india':'IND','china':'CHN','italy':'ITA','italia':'ITA',
+  'thailand':'THA','vietnam':'VN','france':'FRA','germany':'GER','japan':'JPN','spain':'ESP',
+  'mexico':'MEX','netherlands':'NED','south korea':'KOR','korea':'KOR','indonesia':'IDN',
+  'philippines':'PHI','malaysia':'MAS','sri lanka':'SL','pakistan':'PAK','bangladesh':'BAN',
+  'turkey':'TUR','greece':'GRE','egypt':'EGY','south africa':'RSA','brazil':'BRA','argentina':'ARG',
+  'chile':'CHI','peru':'PER','ireland':'IRL','poland':'POL','portugal':'POR','sweden':'SWE',
+  'switzerland':'SUI','belgium':'BEL','denmark':'DEN','norway':'NOR','fiji':'FIJ','israel':'ISR'
+};
+function countryFlag(origin){
+  const key = (origin||'').trim().toLowerCase();
+  return COUNTRY_FLAGS[key] || '🌍';
+}
+function countryCode(origin){
+  const key = (origin||'').trim().toLowerCase();
+  if(COUNTRY_CODES[key]) return COUNTRY_CODES[key];
+  return (origin||'').trim().slice(0,3).toUpperCase();
+}
+function countryTag(origin){
+  if(!origin) return '';
+  return `${countryFlag(origin)} ${escapeHtml(countryCode(origin))}`;
+}
+
+function fmt(n){
+  if(n===null||n===undefined||isNaN(n)) return '—';
+  return '$'+n.toFixed(2);
+}
+
+function qualityEmoji(q){
+  return q==='good' ? '👍' : q==='ok' ? '😐' : q==='bad' ? '👎' : '';
+}
+
+function productMatchesSearch(product, q){
+  if(!q) return true;
+  q = q.toLowerCase();
+  if(product.name.toLowerCase().includes(q)) return true;
+  if((product.notes||'').toLowerCase().includes(q)) return true;
+  return product.entries.some(e=>
+    (e.store||'').toLowerCase().includes(q) || (e.brand||'').toLowerCase().includes(q) ||
+    (e.origin||'').toLowerCase().includes(q) || (e.notes||'').toLowerCase().includes(q)
+  );
+}
+
+function storeOfProduct(product){
+  const preferred = product.entries.find(e=>e.preferred);
+  if(preferred && preferred.store) return preferred.store;
+  const info = bestEntry(product);
+  if(info && info.headline && info.headline.entry.store) return info.headline.entry.store;
+  return '';
+}
+
+function compareBy(key, a, b){
+  switch(key){
+    case 'name-asc': return a.name.localeCompare(b.name, undefined, {sensitivity:'base'});
+    case 'name-desc': return b.name.localeCompare(a.name, undefined, {sensitivity:'base'});
+    case 'store-asc': return storeOfProduct(a).localeCompare(storeOfProduct(b), undefined, {sensitivity:'base'});
+    case 'store-desc': return storeOfProduct(b).localeCompare(storeOfProduct(a), undefined, {sensitivity:'base'});
+    case 'ticked-first': return (a.tick===b.tick) ? 0 : (a.tick ? -1 : 1);
+    case 'unticked-first': return (a.tick===b.tick) ? 0 : (a.tick ? 1 : -1);
+    default: return 0;
+  }
+}
+
+function sortProducts(list){
+  const keys = [state.settings.sort.primary, state.settings.sort.secondary, state.settings.sort.tertiary]
+    .filter(k=>k && k!=='none');
+  if(keys.length===0) return list;
+  return [...list].sort((a,b)=>{
+    for(const k of keys){
+      const r = compareBy(k,a,b);
+      if(r!==0) return r;
+    }
+    return 0;
+  });
+}
+
+// Custom suggestion dropdown (more reliable across mobile browsers than native <datalist>)
+function attachSuggestions(inputEl, getOptions, onPick){
+  const box = document.createElement('div');
+  box.className = 'suggest-box';
+  inputEl.parentElement.appendChild(box);
+
+  function highlight(text, q){
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    if(i===-1) return escapeHtml(text);
+    return escapeHtml(text.slice(0,i)) + '<span class="match">' + escapeHtml(text.slice(i,i+q.length)) + '</span>' + escapeHtml(text.slice(i+q.length));
+  }
+
+  function show(){
+    const q = inputEl.value.trim();
+    const options = getOptions();
+    const matches = q
+      ? options.filter(v=> v.toLowerCase().includes(q.toLowerCase()) && v.toLowerCase()!==q.toLowerCase())
+      : options;
+    if(matches.length===0){ box.style.display='none'; box.innerHTML=''; return; }
+    box.innerHTML = matches.slice(0,7).map(v=>
+      `<div class="suggest-item" data-val="${escapeAttr(v)}">${q ? highlight(v,q) : escapeHtml(v)}</div>`
+    ).join('');
+    box.style.display='block';
+    box.querySelectorAll('.suggest-item').forEach(item=>{
+      item.addEventListener('mousedown', e=>{ e.preventDefault(); });
+      item.addEventListener('click', ()=>{
+        inputEl.value = item.dataset.val;
+        box.style.display='none';
+        onPick(item.dataset.val);
+      });
+    });
+  }
+
+  inputEl.addEventListener('focus', show);
+  inputEl.addEventListener('input', show);
+  inputEl.addEventListener('blur', ()=> setTimeout(()=>{ box.style.display='none'; }, 150));
+}
+
+// Storage that works both inside Claude (window.storage) and in a plain
+// browser like GitHub Pages (falls back to localStorage automatically).
+// This matters for offline use too: localStorage needs no network at all
+// once the page has loaded, so a self-hosted copy keeps working with no signal.
+const hasClaudeStorage = typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function';
+
+async function storageGet(key){
+  if(hasClaudeStorage) return window.storage.get(key, false);
+  try{
+    const v = localStorage.getItem(key);
+    return v!==null ? { value: v } : null;
+  }catch(e){ return null; }
+}
+async function storageSet(key, value){
+  if(hasClaudeStorage) return window.storage.set(key, value, false);
+  try{
+    localStorage.setItem(key, value);
+    return { value };
+  }catch(e){ return null; }
+}
+
+async function loadState(){
+  try{
+    const res = await storageGet(STORAGE_KEY);
+    if(res && res.value){
+      const parsed = JSON.parse(res.value);
+      state.products = parsed.products || [];
+      state.settings = Object.assign({}, DEFAULT_SETTINGS, parsed.settings || {});
+      if(!Array.isArray(state.settings.stores)) state.settings.stores = [...DEFAULT_SETTINGS.stores];
+      if(!Array.isArray(state.settings.brands)) state.settings.brands = [];
+      state.settings.sort = Object.assign({}, DEFAULT_SETTINGS.sort, state.settings.sort || {});
+      // migrate old data: ensure product.tick and new entry fields exist
+      state.products.forEach(p=>{
+        if(typeof p.tick !== 'boolean') p.tick = false;
+        if(typeof p.notes !== 'string') p.notes = '';
+        (p.entries||[]).forEach(e=>{
+          if(typeof e.preferred !== 'boolean') e.preferred = false;
+          if(typeof e.isWool !== 'boolean') e.isWool = false;
+          if(typeof e.onSpecial !== 'boolean') e.onSpecial = false;
+          if(typeof e.regularPrice !== 'string') e.regularPrice = e.regularPrice ? String(e.regularPrice) : '';
+          if(typeof e.quality !== 'string') e.quality = '';
+          if(typeof e.origin !== 'string') e.origin = '';
+        });
+      });
+    }
+  }catch(e){ /* no existing data yet */ }
+
+  document.getElementById('woolMonthly').value = state.settings.woolMonthly;
+  document.getElementById('woolGiftcard').value = state.settings.woolGiftcard;
+  buildSortSelects();
+  updateCombinedLabel();
+  render();
+}
+
+async function saveState(){
+  try{
+    const ok = await storageSet(STORAGE_KEY, JSON.stringify(state));
+    if(!ok) showToast('Could not save — try again');
+  }catch(e){ showToast('Could not save — try again'); }
+}
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function updateCombinedLabel(){
+  document.getElementById('woolCombined').textContent = (combinedDiscount()*100).toFixed(1)+'%';
+}
+
+function buildSortSelects(){
+  ['sortPrimary','sortSecondary','sortTertiary'].forEach((id)=>{
+    const sel = document.getElementById(id);
+    sel.innerHTML = SORT_FIELDS.map(f=>`<option value="${f.value}">${f.label}</option>`).join('');
+  });
+  document.getElementById('sortPrimary').value = state.settings.sort.primary;
+  document.getElementById('sortSecondary').value = state.settings.sort.secondary;
+  document.getElementById('sortTertiary').value = state.settings.sort.tertiary;
+}
+
+function removeFromMasterList(type, value){
+  state.settings[type] = state.settings[type].filter(v=>v!==value);
+  saveState(); render();
+}
+
+function addToMasterList(type, rawValue){
+  const value = (rawValue||'').trim();
+  if(!value) return;
+  const list = state.settings[type];
+  const exists = list.some(v=>v.toLowerCase()===value.toLowerCase());
+  if(!exists){ list.push(value); saveState(); }
+}
+
+function renderDatalists(){
+  document.getElementById('storeDatalist').innerHTML =
+    sortAlpha(state.settings.stores).map(s=>`<option value="${escapeAttr(s)}">`).join('');
+  document.getElementById('brandDatalist').innerHTML =
+    sortAlpha(state.settings.brands).map(b=>`<option value="${escapeAttr(b)}">`).join('');
+}
+
+function renderChips(){
+  const storeChips = document.getElementById('storeChips');
+  storeChips.innerHTML = sortAlpha(state.settings.stores).map(s=>
+    `<span class="chip">${escapeHtml(s)}<button data-val="${escapeAttr(s)}">✕</button></span>`
+  ).join('') || `<span style="font-size:12px;color:var(--ink-faint);">None yet</span>`;
+  storeChips.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=> removeFromMasterList('stores', b.dataset.val));
+  });
+
+  const brandChips = document.getElementById('brandChips');
+  brandChips.innerHTML = sortAlpha(state.settings.brands).map(b=>
+    `<span class="chip">${escapeHtml(b)}<button data-val="${escapeAttr(b)}">✕</button></span>`
+  ).join('') || `<span style="font-size:12px;color:var(--ink-faint);">None yet — they'll appear here as you type them</span>`;
+  brandChips.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=> removeFromMasterList('brands', b.dataset.val));
+  });
+}
+
+function restoreFocus(){
+  if(!focusedField) return;
+  const el = document.querySelector(`[data-entry-id="${focusedField.entryId}"][data-role="${focusedField.role}"]`);
+  if(el){
+    el.focus();
+    if(typeof el.selectionStart === 'number'){
+      const len = el.value.length;
+      try{ el.setSelectionRange(len, len); }catch(e){}
+    }
+  }
+}
+
+function escapeHtml(str){
+  return String(str??'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escapeAttr(str){ return escapeHtml(str); }
+
+function render(){
+  renderChips();
+  renderDatalists();
+  updateStatsLine();
+
+  const list = document.getElementById('productList');
+  list.innerHTML = '';
+
+  if(state.products.length===0){
+    list.innerHTML = `<div class="empty-state">
+      <div class="big">🧺</div>
+      <p><strong>Your ledger is empty</strong></p>
+      <p>Tap the + button below to add your first item.</p>
+    </div>`;
+    restoreFocus();
+    return;
+  }
+
+  let visibleProducts = state.products.filter(p=>productMatchesSearch(p, searchQuery));
+  visibleProducts = sortProducts(visibleProducts);
+
+  if(visibleProducts.length===0){
+    list.innerHTML = `<div class="empty-state">
+      <div class="big">🔎</div>
+      <p><strong>No matches for "${escapeHtml(searchQuery)}"</strong></p>
+      <p>Try a different item, store, or brand name.</p>
+    </div>`;
+    restoreFocus();
+    return;
+  }
+
+  for(const product of visibleProducts){
+    const card = document.createElement('div');
+    const isOpen = openCardId===product.id;
+    card.className = 'card' + (isOpen ? ' open' : '') + (product.tick ? ' done' : '');
+
+    const bestInfo = bestEntry(product);
+    const headline = bestInfo ? bestInfo.headline : null;
+    const preferredEntry = product.entries.find(e=>e.preferred) || null;
+    const preferredCalc = preferredEntry ? effectiveUnitPrice(preferredEntry) : null;
+    const preferredIsHeadlineBest = !!(preferredEntry && headline && headline.entry.id===preferredEntry.id);
+
+    const head = document.createElement('div');
+    head.className = 'card-head';
+    head.innerHTML = `
+      <div class="tick ${product.tick?'checked':''}" data-role="productTick">${product.tick?'✓':''}</div>
+      <div class="card-name-wrap">
+        <input class="card-name" value="${escapeAttr(product.name)}" data-id="${product.id}" />
+        ${ preferredEntry ? `
+          <div class="best-line">
+            <span class="pref-tag">📌 Preferred</span>
+            <span>${storePill(preferredEntry.store)}${preferredEntry.brand ? ' · '+brandPill(preferredEntry.brand):''}</span>
+            ${ preferredEntry.origin ? `<span>${countryTag(preferredEntry.origin)}</span>` : '' }
+            ${ preferredEntry.quality ? `<span>${qualityEmoji(preferredEntry.quality)}</span>` : '' }
+            <span class="best-price">${preferredCalc ? fmt(preferredCalc.eff)+'/'+escapeHtml(preferredCalc.baseLabel) : 'no price yet'}</span>
+          </div>` : '' }
+        ${ headline && !preferredIsHeadlineBest ? `
+          <div class="best-line" style="${preferredEntry ? 'margin-top:2px;' : ''}">
+            <span class="best-tag">Best</span>
+            <span>${storePill(headline.entry.store)}${headline.entry.brand ? ' · '+brandPill(headline.entry.brand):''}</span>
+            ${ headline.entry.origin ? `<span>${countryTag(headline.entry.origin)}</span>` : '' }
+            ${ headline.entry.quality ? `<span>${qualityEmoji(headline.entry.quality)}</span>` : '' }
+            <span class="best-price">${fmt(headline.eff)}/${escapeHtml(headline.baseLabel)}</span>
+            ${ bestInfo.familyCount>1 ? `<span style="color:var(--ink-faint);">· different units below compared separately</span>` : '' }
+          </div>` : '' }
+        ${ !headline && !preferredEntry ? `<div class="no-entries">No prices added yet</div>` : '' }
+        ${ product.notes ? `<div class="no-entries" style="color:var(--ink-soft);font-style:normal;">📝 ${escapeHtml(product.notes)}</div>` : '' }
+      </div>
+      <button class="del-product" data-id="${product.id}" title="Delete item">✕</button>
+      <span class="chev">▶</span>
+    `;
+    head.querySelector('[data-role="productTick"]').addEventListener('click', (ev)=>{
+      ev.stopPropagation();
+      product.tick = !product.tick;
+      saveState(); render();
+    });
+    head.addEventListener('click', (ev)=>{
+      if(ev.target.closest('.del-product') || ev.target.closest('.card-name') || ev.target.closest('[data-role="productTick"]')) return;
+      openCardId = openCardId===product.id ? null : product.id;
+      render();
+    });
+    head.querySelector('.del-product').addEventListener('click', (ev)=>{
+      ev.stopPropagation();
+      state.products = state.products.filter(p=>p.id!==product.id);
+      saveState(); render();
+    });
+    const nameInput = head.querySelector('.card-name');
+    nameInput.addEventListener('click', e=>e.stopPropagation());
+    nameInput.addEventListener('change', e=>{
+      product.name = e.target.value;
+      saveState();
+    });
+
+    card.appendChild(head);
+
+    const entriesWrap = document.createElement('div');
+    entriesWrap.className = 'entries';
+
+    const noteWrap = document.createElement('div');
+    noteWrap.className = 'item-note-wrap';
+    noteWrap.innerHTML = `<input type="text" class="item-note-input" placeholder="📝 Add a note about this item (e.g. buy every 2 weeks)" value="${escapeAttr(product.notes||'')}">`;
+    noteWrap.querySelector('input').addEventListener('change', e=>{
+      product.notes = e.target.value;
+      saveState(); render();
+    });
+    entriesWrap.appendChild(noteWrap);
+
+    if(product.entries.length>0){
+      const allExpanded = product.entries.every(e=>expandedEntries.has(e.id));
+      const toolbar = document.createElement('div');
+      toolbar.className = 'entries-toolbar';
+      const toggleAllBtn = document.createElement('button');
+      toggleAllBtn.className = 'expand-all-btn';
+      toggleAllBtn.textContent = allExpanded ? 'Collapse all' : 'Expand all';
+      toggleAllBtn.addEventListener('click', ()=>{
+        if(allExpanded){ product.entries.forEach(e=>expandedEntries.delete(e.id)); }
+        else { product.entries.forEach(e=>expandedEntries.add(e.id)); }
+        render();
+      });
+      toolbar.appendChild(toggleAllBtn);
+      entriesWrap.appendChild(toolbar);
+    }
+
+    for(const entry of product.entries){
+      entriesWrap.appendChild(renderEntry(product, entry, bestInfo));
+    }
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-entry-btn';
+    addBtn.textContent = '+ Add store / price';
+    addBtn.addEventListener('click', ()=>{
+      const newEntry = { id: uid(), store:'', brand:'', price:'', qty:'', unit:'g', notes:'',
+        isWool:false, preferred:false, onSpecial:false, regularPrice:'', quality:'', origin:'' };
+      product.entries.push(newEntry);
+      expandedEntries.add(newEntry.id);
+      saveState(); render();
+    });
+    entriesWrap.appendChild(addBtn);
+
+    card.appendChild(entriesWrap);
+    list.appendChild(card);
+  }
+
+  restoreFocus();
+}
+
+function renderEntry(product, entry, bestInfo){
+  const wrap = document.createElement('div');
+  wrap.className = 'entry-wrap';
+
+  const calc = effectiveUnitPrice(entry);
+  const familyBest = calc && bestInfo ? bestInfo.byFamily[calc.family] : null;
+  const isBest = !!(calc && familyBest && familyBest.entry.id===entry.id);
+  const isWoolworths = (entry.store||'').trim().toLowerCase()==='woolworths';
+  const isExpanded = expandedEntries.has(entry.id);
+  const regularCalc = entry.onSpecial && entry.regularPrice ? computeUnitPrice(entry.regularPrice, entry) : null;
+
+  // --- Compact row ---
+  const ec = document.createElement('div');
+  ec.className = 'ec';
+  ec.innerHTML = `
+    <div class="ec-tap" data-role="toggleExpand">
+      <div class="ec-line1">
+        ${ entry.store || entry.brand
+          ? `<span>${storePill(entry.store)}${entry.brand ? ' · '+brandPill(entry.brand):''}</span>`
+          : `<span class="placeholder">Tap to add details</span>` }
+        ${ entry.origin ? `<span title="${escapeAttr(entry.origin)}">${countryTag(entry.origin)}</span>` : '' }
+        ${ entry.quality ? `<span>${qualityEmoji(entry.quality)}</span>` : '' }
+      </div>
+      <div class="ec-line2">
+        ${ entry.onSpecial ? `<span class="mini-badge special">🏷️ Special</span>` : '' }
+        ${ entry.preferred ? `<span class="mini-badge pref">📌 Preferred</span>` : '' }
+        ${ isBest ? `<span class="mini-badge best">★ Best</span>` : '' }
+      </div>
+    </div>
+    <div class="ec-price">
+      ${ calc ? `
+        ${ regularCalc ? `<span class="orig">${fmt(regularCalc.raw)}</span>` : '' }
+        ${fmt(calc.eff)}<span class="unit">/${escapeHtml(calc.baseLabel)}</span>
+      ` : `<span style="font-size:11px;color:var(--ink-faint);">—</span>` }
+    </div>
+    <div class="ec-actions">
+      <button class="mini-icon-btn ${entry.preferred?'active':''}" data-role="preferredMini" title="Preferred">📌</button>
+      <button class="mini-icon-btn" data-role="deleteMini" title="Remove row">✕</button>
+    </div>
+  `;
+  ec.querySelector('[data-role="toggleExpand"]').addEventListener('click', ()=>{
+    if(isExpanded) expandedEntries.delete(entry.id); else expandedEntries.add(entry.id);
+    render();
+  });
+  ec.querySelector('[data-role="preferredMini"]').addEventListener('click', ()=>{
+    const turningOn = !entry.preferred;
+    product.entries.forEach(e=> e.preferred = false);
+    entry.preferred = turningOn;
+    saveState(); render();
+  });
+  ec.querySelector('[data-role="deleteMini"]').addEventListener('click', ()=>{
+    product.entries = product.entries.filter(x=>x.id!==entry.id);
+    expandedEntries.delete(entry.id);
+    saveState(); render();
+  });
+  wrap.appendChild(ec);
+
+  if(!isExpanded) return wrap;
+
+  // --- Expanded form ---
+  const form = document.createElement('div');
+  form.className = 'entry-form';
+  const unitSelectOptions = unitOptions.map(u=>`<option value="${u}" ${entry.unit===u?'selected':''}>${u}</option>`).join('');
+
+  form.innerHTML = `
+    <div class="entry-fields">
+      <div class="field">
+        <label>Store</label>
+        <input type="text" data-role="store" data-entry-id="${entry.id}" value="${escapeAttr(entry.store)}" placeholder="e.g. Woolworths">
+      </div>
+      <div class="field">
+        <label>Brand</label>
+        <input type="text" data-role="brand" data-entry-id="${entry.id}" value="${escapeAttr(entry.brand)}" placeholder="e.g. Bulla">
+      </div>
+      <div class="field num">
+        <label>Price ($)</label>
+        <input type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" data-role="price" data-entry-id="${entry.id}" value="${escapeAttr(entry.price)}" placeholder="0.00">
+      </div>
+      <div class="field num">
+        <label>Qty</label>
+        <input type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" data-role="qty" data-entry-id="${entry.id}" value="${escapeAttr(entry.qty)}" placeholder="e.g. 500">
+      </div>
+      <div class="field">
+        <label>Unit</label>
+        <select data-role="unit">${unitSelectOptions}</select>
+      </div>
+      <div class="field">
+        <label>Origin</label>
+        <input type="text" data-role="origin" data-entry-id="${entry.id}" value="${escapeAttr(entry.origin)}" placeholder="e.g. Australia">
+      </div>
+      <div class="field full">
+        <label>Notes</label>
+        <input type="text" data-role="notes" value="${escapeAttr(entry.notes)}" placeholder="e.g. shelf near dairy">
+      </div>
+    </div>
+
+    ${ isWoolworths ? `
+      <label class="toggle-row">
+        <input type="checkbox" data-role="woolToggle" ${entry.isWool?'checked':''}>
+        Apply my Woolworths discount to this row
+      </label>` : '' }
+
+    <label class="toggle-row">
+      <input type="checkbox" data-role="onSpecialToggle" ${entry.onSpecial?'checked':''}>
+      This price is a special / discount (not the regular price)
+    </label>
+    ${ entry.onSpecial ? `
+      <div class="entry-fields" style="margin-top:6px;">
+        <div class="field num">
+          <label>Regular price ($)</label>
+          <input type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" data-role="regularPrice" data-entry-id="${entry.id}" value="${escapeAttr(entry.regularPrice)}" placeholder="0.00">
+        </div>
+      </div>` : '' }
+
+    <div class="quality-row">
+      <label>Quality</label>
+      <div class="quality-buttons">
+        <button data-q="good" class="${entry.quality==='good'?'active':''}" title="Good">👍</button>
+        <button data-q="ok" class="${entry.quality==='ok'?'active':''}" title="Okay">😐</button>
+        <button data-q="bad" class="${entry.quality==='bad'?'active':''}" title="Not great">👎</button>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <div class="left-btns">
+        <button class="text-btn ${entry.preferred?'pref-active':''}" data-role="preferredBtn">📌 ${entry.preferred?'Preferred':'Mark preferred'}</button>
+        <button class="text-btn danger" data-role="deleteBtn">✕ Remove</button>
+      </div>
+      <button class="text-btn" data-role="collapseBtn">▴ Collapse</button>
+    </div>
+  `;
+
+  const storeInput = form.querySelector('[data-role="store"]');
+  storeInput.addEventListener('input', e=>{
+    focusedField = { entryId: entry.id, role: 'store' };
+    entry.store = e.target.value;
+    entry.isWool = (e.target.value||'').trim().toLowerCase()==='woolworths';
+    saveState();
+    render();
+  });
+  storeInput.addEventListener('blur', e=>{
+    if(focusedField && focusedField.entryId===entry.id && focusedField.role==='store') focusedField = null;
+    addToMasterList('stores', e.target.value);
+    renderChips(); renderDatalists();
+  });
+  attachSuggestions(storeInput, ()=>sortAlpha(state.settings.stores), (val)=>{
+    entry.store = val;
+    entry.isWool = val.trim().toLowerCase()==='woolworths';
+    addToMasterList('stores', val);
+    saveState(); render();
+  });
+
+  const brandInput = form.querySelector('[data-role="brand"]');
+  brandInput.addEventListener('input', e=>{
+    focusedField = { entryId: entry.id, role: 'brand' };
+    entry.brand = e.target.value;
+    saveState();
+  });
+  brandInput.addEventListener('blur', e=>{
+    if(focusedField && focusedField.entryId===entry.id && focusedField.role==='brand') focusedField = null;
+    addToMasterList('brands', e.target.value);
+    renderChips(); renderDatalists();
+  });
+  attachSuggestions(brandInput, ()=>sortAlpha(state.settings.brands), (val)=>{
+    entry.brand = val;
+    addToMasterList('brands', val);
+    saveState(); render();
+  });
+
+  form.querySelector('[data-role="price"]').addEventListener('input', e=>{
+    focusedField = { entryId: entry.id, role: 'price' };
+    entry.price = sanitizeNumericInput(e.target.value);
+    saveState(); render();
+  });
+  form.querySelector('[data-role="qty"]').addEventListener('input', e=>{
+    focusedField = { entryId: entry.id, role: 'qty' };
+    entry.qty = sanitizeNumericInput(e.target.value);
+    saveState(); render();
+  });
+  form.querySelector('[data-role="unit"]').addEventListener('change', e=>{ entry.unit = e.target.value; saveState(); render(); });
+  form.querySelector('[data-role="notes"]').addEventListener('change', e=>{ entry.notes = e.target.value; saveState(); });
+
+  const originInput = form.querySelector('[data-role="origin"]');
+  originInput.addEventListener('input', e=>{
+    focusedField = { entryId: entry.id, role: 'origin' };
+    entry.origin = e.target.value;
+    saveState();
+  });
+  originInput.addEventListener('blur', ()=>{
+    if(focusedField && focusedField.entryId===entry.id && focusedField.role==='origin') focusedField = null;
+    render();
+  });
+
+  const woolToggle = form.querySelector('[data-role="woolToggle"]');
+  if(woolToggle){
+    woolToggle.addEventListener('change', e=>{ entry.isWool = e.target.checked; saveState(); render(); });
+  }
+
+  form.querySelector('[data-role="onSpecialToggle"]').addEventListener('change', e=>{
+    entry.onSpecial = e.target.checked;
+    saveState(); render();
+  });
+  const regularPriceInput = form.querySelector('[data-role="regularPrice"]');
+  if(regularPriceInput){
+    regularPriceInput.addEventListener('input', e=>{
+      focusedField = { entryId: entry.id, role: 'regularPrice' };
+      entry.regularPrice = sanitizeNumericInput(e.target.value);
+      saveState(); render();
+    });
+  }
+
+  form.querySelectorAll('.quality-buttons button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      entry.quality = entry.quality===btn.dataset.q ? '' : btn.dataset.q;
+      saveState(); render();
+    });
+  });
+
+  form.querySelector('[data-role="preferredBtn"]').addEventListener('click', ()=>{
+    const turningOn = !entry.preferred;
+    product.entries.forEach(e=> e.preferred = false);
+    entry.preferred = turningOn;
+    saveState(); render();
+  });
+  form.querySelector('[data-role="deleteBtn"]').addEventListener('click', ()=>{
+    product.entries = product.entries.filter(x=>x.id!==entry.id);
+    expandedEntries.delete(entry.id);
+    saveState(); render();
+  });
+  form.querySelector('[data-role="collapseBtn"]').addEventListener('click', ()=>{
+    expandedEntries.delete(entry.id);
+    render();
+  });
+
+  wrap.appendChild(form);
+  return wrap;
+}
+
+function closeAllPanels(){
+  ['searchPanel','addPanel','importPanel','sortPanel','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));
+  ['searchBtn','addBtn','importBtn','sortBtn','gearBtn'].forEach(id=>document.getElementById(id).classList.remove('is-active'));
+}
+function togglePanel(panelId, btnId, onOpen){
+  const isOpen = document.getElementById(panelId).classList.contains('open');
+  closeAllPanels();
+  if(!isOpen){
+    document.getElementById(panelId).classList.add('open');
+    document.getElementById(btnId).classList.add('is-active');
+    if(onOpen) onOpen();
+  }
+}
+document.getElementById('searchBtn').addEventListener('click', ()=> togglePanel('searchPanel','searchBtn', ()=>{
+  setTimeout(()=> document.getElementById('searchInput').focus(), 50);
+}));
+document.getElementById('addBtn').addEventListener('click', ()=> togglePanel('addPanel','addBtn', ()=>{
+  document.getElementById('newProductInput').value = '';
+  setTimeout(()=> document.getElementById('newProductInput').focus(), 50);
+}));
+document.getElementById('importBtn').addEventListener('click', ()=> togglePanel('importPanel','importBtn'));
+document.getElementById('gearBtn').addEventListener('click', ()=> togglePanel('settingsPanel','gearBtn'));
+document.getElementById('sortBtn').addEventListener('click', ()=> togglePanel('sortPanel','sortBtn'));
+
+document.getElementById('addProductBtn').addEventListener('click', addProduct);
+document.getElementById('newProductInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addProduct(); });
+attachSuggestions(
+  document.getElementById('newProductInput'),
+  ()=> sortAlpha(state.products.map(p=>p.name)),
+  (val)=>{
+    const existing = state.products.find(p=>p.name.toLowerCase()===val.toLowerCase());
+    document.getElementById('newProductInput').value = '';
+    if(existing){
+      openCardId = existing.id; searchQuery=''; document.getElementById('searchInput').value='';
+      closeAllPanels();
+      render();
+      document.getElementById('productList').scrollIntoView({behavior:'smooth', block:'start'});
+    }
+  }
+);
+function addProduct(){
+  const input = document.getElementById('newProductInput');
+  const name = input.value.trim();
+  if(!name) return;
+  const p = { id: uid(), name, tick:false, notes:'', entries: [] };
+  state.products.unshift(p);
+  openCardId = p.id;
+  input.value = '';
+  closeAllPanels();
+  saveState(); render();
+}
+
+const searchInput = document.getElementById('searchInput');
+const clearSearchBtn = document.getElementById('clearSearch');
+searchInput.addEventListener('input', e=>{
+  searchQuery = e.target.value;
+  clearSearchBtn.style.display = searchQuery ? 'block' : 'none';
+  render();
+});
+clearSearchBtn.addEventListener('click', ()=>{
+  searchQuery = '';
+  searchInput.value = '';
+  clearSearchBtn.style.display = 'none';
+  render();
+  searchInput.focus();
+});
+
+// --- CSV import ---
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i], next = text[i+1];
+    if(inQuotes){
+      if(c==='"' && next==='"'){ field+='"'; i++; }
+      else if(c==='"'){ inQuotes=false; }
+      else field += c;
+    } else {
+      if(c==='"') inQuotes = true;
+      else if(c===','){ row.push(field); field=''; }
+      else if(c==='\n' || c==='\r'){
+        if(c==='\r' && next==='\n') i++;
+        row.push(field); field='';
+        if(row.some(f=>f.trim()!=='')) rows.push(row);
+        row = [];
+      } else field += c;
+    }
+  }
+  if(field.length>0 || row.length>0){ row.push(field); if(row.some(f=>f.trim()!=='')) rows.push(row); }
+  return rows;
+}
+
+function findCol(headers, ...aliases){
+  const idx = headers.findIndex(h=> aliases.some(a=> h===a || h.includes(a)));
+  return idx;
+}
+
+function toBool(v){
+  const s = (v||'').toString().trim().toLowerCase();
+  return s==='true' || s==='yes' || s==='1' || s==='✓' || s==='checked' || s==='x';
+}
+
+function normalizeUnit(v){
+  const s = (v||'').toString().trim().toLowerCase();
+  if(s==='kg') return 'kg';
+  if(s==='g' || s==='gram' || s==='grams') return 'g';
+  if(s==='ml') return 'ml';
+  if(s==='l' || s==='litre' || s==='liter' || s==='litres') return 'L';
+  return 'ea';
+}
+
+function importFromCSV(text){
+  const rows = parseCSV(text.trim());
+  if(rows.length<2) return { added:0, itemsTouched:0, error:'No data rows found — make sure the first line has column headers.' };
+  const headers = rows[0].map(h=>h.trim().toLowerCase());
+
+  const colName = findCol(headers,'item','product','name');
+  const colTick = findCol(headers,'tick','bought','done');
+  const colStore = findCol(headers,'store');
+  const colBrand = findCol(headers,'brand');
+  const colPrice = findCol(headers,'price');
+  const colQty = findCol(headers,'qty','quantity','amount');
+  const colUnit = findCol(headers,'unit');
+  const colNotes = findCol(headers,'notes','note');
+  const colOrigin = findCol(headers,'origin','country');
+  const colQuality = findCol(headers,'quality');
+  const colSpecial = findCol(headers,'special','discount','onspecial');
+  const colRegular = findCol(headers,'regular','rrp','normal price','regularprice');
+  const colPreferred = findCol(headers,'preferred','favourite','favorite');
+
+  if(colName===-1) return { added:0, itemsTouched:0, error:'Could not find an Item/Product/Name column.' };
+
+  let itemsTouched = new Set();
+  let rowsAdded = 0;
+
+  for(let i=1;i<rows.length;i++){
+    const r = rows[i];
+    const name = (r[colName]||'').trim();
+    if(!name) continue;
+
+    let product = state.products.find(p=>p.name.toLowerCase()===name.toLowerCase());
+    if(!product){
+      product = { id: uid(), name, tick:false, notes:'', entries: [] };
+      state.products.push(product);
+    }
+    if(colTick!==-1 && toBool(r[colTick])) product.tick = true;
+    itemsTouched.add(product.id);
+
+    const hasEntryData = (colStore!==-1 && r[colStore]) || (colBrand!==-1 && r[colBrand]) || (colPrice!==-1 && r[colPrice]);
+    if(!hasEntryData) continue;
+
+    const entry = {
+      id: uid(),
+      store: colStore!==-1 ? (r[colStore]||'').trim() : '',
+      brand: colBrand!==-1 ? (r[colBrand]||'').trim() : '',
+      price: colPrice!==-1 ? sanitizeNumericInput(r[colPrice]) : '',
+      qty: colQty!==-1 ? sanitizeNumericInput(r[colQty]) : '',
+      unit: colUnit!==-1 ? normalizeUnit(r[colUnit]) : 'g',
+      notes: colNotes!==-1 ? (r[colNotes]||'').trim() : '',
+      origin: colOrigin!==-1 ? (r[colOrigin]||'').trim() : '',
+      quality: '',
+      onSpecial: colSpecial!==-1 ? toBool(r[colSpecial]) : false,
+      regularPrice: colRegular!==-1 ? sanitizeNumericInput(r[colRegular]) : '',
+      preferred: colPreferred!==-1 ? toBool(r[colPreferred]) : false,
+      isWool: false
+    };
+    if(colQuality!==-1){
+      const q = (r[colQuality]||'').toString().trim().toLowerCase();
+      if(q.includes('good')||q==='👍') entry.quality='good';
+      else if(q.includes('bad')||q.includes('poor')||q==='👎') entry.quality='bad';
+      else if(q) entry.quality='ok';
+    }
+    entry.isWool = entry.store.toLowerCase()==='woolworths';
+    if(entry.preferred) product.entries.forEach(e=>e.preferred=false);
+
+    product.entries.push(entry);
+    if(entry.store) addToMasterList('stores', entry.store);
+    if(entry.brand) addToMasterList('brands', entry.brand);
+    rowsAdded++;
+  }
+
+  saveState();
+  return { added: rowsAdded, itemsTouched: itemsTouched.size, error: null };
+}
+
+document.getElementById('importFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById('importText').value = reader.result;
+    document.getElementById('importResult').style.color = 'var(--ink-soft)';
+    document.getElementById('importResult').textContent = `Loaded "${file.name}" — tap "Import rows" to bring it in.`;
+  };
+  reader.onerror = () => {
+    document.getElementById('importResult').style.color = 'var(--danger)';
+    document.getElementById('importResult').textContent = 'Could not read that file — try pasting the contents instead.';
+  };
+  reader.readAsText(file);
+  e.target.value = ''; // allow re-selecting the same file later
+});
+
+document.getElementById('importCsvBtn').addEventListener('click', ()=>{
+  const text = document.getElementById('importText').value;
+  const resultEl = document.getElementById('importResult');
+  if(!text.trim()){ resultEl.textContent = 'Paste some CSV data first.'; return; }
+  const result = importFromCSV(text);
+  if(result.error){
+    resultEl.style.color = 'var(--danger)';
+    resultEl.textContent = result.error;
+  } else {
+    resultEl.style.color = 'var(--green-deep)';
+    resultEl.textContent = `Imported ${result.added} row(s) into ${result.itemsTouched} item(s).`;
+    document.getElementById('importText').value = '';
+    render();
+  }
+});
+
+function csvEscape(v){
+  const s = (v===undefined||v===null) ? '' : String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+function exportToCSV(){
+  const fields = ['Item','Tick','Store','Brand','Price','Qty','Unit','Notes','Origin','Quality','Special','RegularPrice','Preferred'];
+  const lines = [fields.join(',')];
+  for(const p of state.products){
+    if(p.entries.length===0){
+      lines.push([p.name, p.tick?'Yes':'No','','','','','',p.notes||'','','','','',''].map(csvEscape).join(','));
+      continue;
+    }
+    for(const e of p.entries){
+      lines.push([
+        p.name, p.tick?'Yes':'No', e.store, e.brand, e.price, e.qty, e.unit,
+        e.notes, e.origin, e.quality, e.onSpecial?'Yes':'', e.regularPrice, e.preferred?'Yes':''
+      ].map(csvEscape).join(','));
+    }
+  }
+  return lines.join('\n');
+}
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+  const csv = exportToCSV();
+  const textarea = document.getElementById('importText');
+  textarea.value = csv;
+  const resultEl = document.getElementById('importResult');
+
+  const today = new Date().toISOString().slice(0,10);
+  const filename = `shop-ledger-${today}.csv`;
+
+  try{
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=> URL.revokeObjectURL(url), 2000);
+    resultEl.style.color = 'var(--green-deep)';
+    resultEl.textContent = `Downloading ${filename} — on iPhone, open it from Files and choose "Open in Numbers" (or share → Numbers). If nothing happened, the text is also selected below to copy manually.`;
+  }catch(e){
+    resultEl.style.color = 'var(--ink-soft)';
+    resultEl.textContent = `Download didn't start — but your list is selected below, copy it manually instead.`;
+  }
+  textarea.focus();
+  textarea.select();
+  try{ textarea.setSelectionRange(0, textarea.value.length); }catch(e){}
+});
+
+document.getElementById('woolMonthly').addEventListener('input', e=>{
+  state.settings.woolMonthly = e.target.value; updateCombinedLabel(); saveState(); render();
+});
+document.getElementById('woolGiftcard').addEventListener('input', e=>{
+  state.settings.woolGiftcard = e.target.value; updateCombinedLabel(); saveState(); render();
+});
+
+document.getElementById('addStoreChip').addEventListener('click', ()=>{
+  const input = document.getElementById('newStoreChip');
+  addToMasterList('stores', input.value);
+  input.value = '';
+  render();
+});
+document.getElementById('newStoreChip').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('addStoreChip').click();
+});
+document.getElementById('addBrandChip').addEventListener('click', ()=>{
+  const input = document.getElementById('newBrandChip');
+  addToMasterList('brands', input.value);
+  input.value = '';
+  render();
+});
+document.getElementById('newBrandChip').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('addBrandChip').click();
+});
+
+['sortPrimary','sortSecondary','sortTertiary'].forEach((id, idx)=>{
+  const key = ['primary','secondary','tertiary'][idx];
+  document.getElementById(id).addEventListener('change', e=>{
+    state.settings.sort[key] = e.target.value;
+    saveState(); render();
+  });
+});
+
+loadState();
+</script>
+</body>
+</html>
