@@ -230,6 +230,8 @@ h1 .dot{color:var(--green);}
   font-weight:600;font-size:inherit;line-height:1.5;border:1.4px solid currentColor;background:transparent;
 }
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -319,6 +321,15 @@ h1 .dot{color:var(--green);}
         <div class="chip-add">
           <input type="text" id="newBrandChip" placeholder="Add a brand, e.g. Bulla">
           <button id="addBrandChip">+</button>
+        </div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Shared list<small>Sync live between devices (e.g. with your partner). Needs a one-time free setup — ask me for the steps.</small></div>
+        <div id="syncStatus" style="font-size:12px;color:var(--ink-soft);margin:8px 0;">Not connected — this device only</div>
+        <textarea id="firebaseConfigInput" placeholder='Paste your Firebase config here, the whole { ... } object' style="width:100%;min-height:70px;font-family:'JetBrains Mono',monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff;color:var(--ink);resize:vertical;"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="text-btn" id="connectSyncBtn" style="flex:1;text-align:center;padding:9px;background:var(--green);color:#fff;border:none;font-weight:600;">Connect</button>
+          <button class="text-btn" id="disconnectSyncBtn" style="flex:1;text-align:center;padding:9px;">Disconnect</button>
         </div>
       </div>
     </div>
@@ -649,6 +660,7 @@ async function loadState(){
   buildSortSelects();
   updateCombinedLabel();
   render();
+  loadSyncConfig();
 }
 
 async function saveState(){
@@ -656,6 +668,76 @@ async function saveState(){
     const ok = await storageSet(STORAGE_KEY, JSON.stringify(state));
     if(!ok) showToast('Could not save — try again');
   }catch(e){ showToast('Could not save — try again'); }
+  if(syncing && dbRef){
+    try{ dbRef.set(state); }catch(e){ /* will retry on next save */ }
+  }
+}
+
+// --- Live sync between devices (e.g. you + your partner) via Firebase Realtime Database.
+// This only works once the page is hosted on a real domain (like GitHub Pages) — the
+// gstatic.com script it needs is blocked inside Claude's own sandboxed preview.
+const SYNC_CONFIG_KEY = 'shop-ledger-sync-config';
+let firebaseApp = null, dbRef = null, syncing = false, applyingRemote = false;
+
+function updateSyncStatus(msg, isError){
+  const el = document.getElementById('syncStatus');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--danger)' : (syncing ? 'var(--green-deep)' : 'var(--ink-soft)');
+}
+
+function connectSync(config, isInitialLoad){
+  if(typeof firebase === 'undefined'){
+    updateSyncStatus('Sync library didn\'t load — this only works once uploaded to GitHub, not in this chat preview.', true);
+    return;
+  }
+  try{
+    if(firebaseApp){ try{ firebaseApp.delete(); }catch(e){} }
+    firebaseApp = firebase.initializeApp(config, 'shopSync_' + Date.now());
+    dbRef = firebaseApp.database().ref('shopping-list-data');
+    dbRef.on('value', (snapshot)=>{
+      const remote = snapshot.val();
+      if(remote && JSON.stringify(remote) !== JSON.stringify(state)){
+        applyingRemote = true;
+        state = remote;
+        if(!state.settings) state.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+        if(!Array.isArray(state.products)) state.products = [];
+        render();
+        storageSet(STORAGE_KEY, JSON.stringify(state)); // persist locally too, without pushing back up
+        applyingRemote = false;
+      }
+    }, (err)=>{
+      updateSyncStatus('Connection error — check your Firebase config and database rules.', true);
+    });
+    syncing = true;
+    updateSyncStatus('Connected — syncing live with anyone using this same link.', false);
+    storageSet(SYNC_CONFIG_KEY, JSON.stringify(config));
+    if(!isInitialLoad){
+      dbRef.set(state); // push current list up immediately so the other device sees it right away
+    }
+  }catch(e){
+    updateSyncStatus('Could not connect — make sure you pasted the full config object correctly.', true);
+  }
+}
+
+function disconnectSync(){
+  if(dbRef){ try{ dbRef.off(); }catch(e){} }
+  syncing = false;
+  dbRef = null;
+  updateSyncStatus('Not connected — this device only', false);
+  storageSet(SYNC_CONFIG_KEY, '');
+}
+
+async function loadSyncConfig(){
+  try{
+    const res = await storageGet(SYNC_CONFIG_KEY);
+    if(res && res.value){
+      const cfg = JSON.parse(res.value);
+      const input = document.getElementById('firebaseConfigInput');
+      if(input) input.value = JSON.stringify(cfg, null, 2);
+      connectSync(cfg, true);
+    }
+  }catch(e){ /* not set up yet */ }
 }
 
 let toastTimer;
@@ -1422,6 +1504,32 @@ document.getElementById('newBrandChip').addEventListener('keydown', e=>{
     saveState(); render();
   });
 });
+
+function parseFirebaseConfig(raw){
+  // Firebase's console shows a JS object literal (unquoted keys like apiKey: "..."),
+  // which isn't valid strict JSON. Try JSON first, then fall back to evaluating it
+  // as a plain JS object literal (safe here — it's the user's own pasted config,
+  // evaluated locally in their own browser, not sent anywhere).
+  try{ return JSON.parse(raw); }catch(e){ /* fall through */ }
+  const objMatch = raw.match(/\{[\s\S]*\}/);
+  if(!objMatch) throw new Error('No object found');
+  return new Function('return (' + objMatch[0] + ')')();
+}
+
+document.getElementById('connectSyncBtn').addEventListener('click', ()=>{
+  try{
+    const raw = document.getElementById('firebaseConfigInput').value.trim();
+    const config = parseFirebaseConfig(raw);
+    if(!config || !config.databaseURL){
+      updateSyncStatus('That config is missing a databaseURL — make sure Realtime Database is enabled in Firebase and you copied the full object.', true);
+      return;
+    }
+    connectSync(config, false);
+  }catch(e){
+    updateSyncStatus('That doesn\'t look like valid config — paste the whole { ... } object from Firebase, unchanged.', true);
+  }
+});
+document.getElementById('disconnectSyncBtn').addEventListener('click', disconnectSync);
 
 loadState();
 </script>
