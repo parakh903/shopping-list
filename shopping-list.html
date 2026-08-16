@@ -541,6 +541,30 @@ function priceTypeBadge(entry){
   return `<span class="mini-badge normal">Reg. price</span>`;
 }
 
+// Shared price-trail logic: original (if special) → pre-discount (if Woolworths) → final price.
+// Used both inline (item's collapsed main line) and stacked (each store row).
+function getPriceTrail(entry){
+  const calc = effectiveUnitPrice(entry);
+  if(!calc) return null;
+  const regularCalc = entry.onSpecial && entry.regularPrice ? computeUnitPrice(entry.regularPrice, entry) : null;
+  const struckValues = [];
+  if(regularCalc) struckValues.push(fmt(regularCalc.raw)); // full original, before the special
+  if(entry.isWool) struckValues.push(fmt(calc.raw));        // price before the Woolworths member discount
+  return { struckValues, finalText: `${fmt(calc.eff)}<span class="unit">/${escapeHtml(calc.baseLabel)}</span>` };
+}
+function priceTrailBlockHTML(entry){
+  const trail = getPriceTrail(entry);
+  if(!trail) return `<span style="font-size:11px;color:var(--ink-faint);">—</span>`;
+  const struck = trail.struckValues.map(v=>`<span class="price-step">${v}</span>`).join('');
+  return `${struck}<span class="price-final">${trail.finalText}</span>`;
+}
+function priceTrailInlineHTML(entry){
+  const trail = getPriceTrail(entry);
+  if(!trail) return `<span class="best-price">no price yet</span>`;
+  const struck = trail.struckValues.map(v=>`<span style="text-decoration:line-through;color:var(--ink-faint);font-weight:500;">${v}</span>`).join(' ');
+  return (struck ? struck + ' ' : '') + `<span class="best-price">${trail.finalText}</span>`;
+}
+
 function productMatchesSearch(product, q){
   if(!q) return true;
   q = q.toLowerCase();
@@ -938,7 +962,7 @@ function renderInner(){
             ${ preferredEntry.origin ? `<span>${countryTag(preferredEntry.origin)}</span>` : '' }
             ${ preferredEntry.quality ? `<span>${qualityEmoji(preferredEntry.quality)}</span>` : '' }
             ${ priceTypeBadge(preferredEntry) }
-            <span class="best-price">${preferredCalc ? fmt(preferredCalc.eff)+'/'+escapeHtml(preferredCalc.baseLabel) : 'no price yet'}</span>
+            ${ priceTrailInlineHTML(preferredEntry) }
           </div>` : '' }
         ${ headline && !preferredIsHeadlineBest ? `
           <div class="best-line" style="${preferredEntry ? 'margin-top:2px;' : ''}">
@@ -947,7 +971,7 @@ function renderInner(){
             ${ headline.entry.origin ? `<span>${countryTag(headline.entry.origin)}</span>` : '' }
             ${ headline.entry.quality ? `<span>${qualityEmoji(headline.entry.quality)}</span>` : '' }
             ${ priceTypeBadge(headline.entry) }
-            <span class="best-price">${fmt(headline.eff)}/${escapeHtml(headline.baseLabel)}</span>
+            ${ priceTrailInlineHTML(headline.entry) }
             ${ bestInfo.familyCount>1 ? `<span style="color:var(--ink-faint);">· different units below compared separately</span>` : '' }
           </div>` : '' }
         ${ !headline && !preferredEntry ? `<div class="no-entries">No prices added yet</div>` : '' }
@@ -1042,15 +1066,6 @@ function renderEntry(product, entry, bestInfo){
   const isExpanded = expandedEntries.has(entry.id);
   const regularCalc = entry.onSpecial && entry.regularPrice ? computeUnitPrice(entry.regularPrice, entry) : null;
 
-  function priceTrailHTML(){
-    if(!calc) return `<span style="font-size:11px;color:var(--ink-faint);">—</span>`;
-    const steps = [];
-    if(regularCalc) steps.push(fmt(regularCalc.raw)); // full original price, before the special
-    if(entry.isWool) steps.push(fmt(calc.raw));        // price before the Woolworths member discount
-    const struckSteps = steps.map(v => `<span class="price-step">${v}</span>`).join('');
-    return `${struckSteps}<span class="price-final">${fmt(calc.eff)}<span class="unit">/${escapeHtml(calc.baseLabel)}</span></span>`;
-  }
-
   // --- Compact row ---
   const ec = document.createElement('div');
   ec.className = 'ec';
@@ -1070,7 +1085,7 @@ function renderEntry(product, entry, bestInfo){
       </div>
     </div>
     <div class="ec-price">
-      ${ priceTrailHTML() }
+      ${ priceTrailBlockHTML(entry) }
     </div>
     <div class="ec-actions">
       <button class="mini-icon-btn ${entry.preferred?'active':''}" data-role="preferredMini" title="Preferred">📌</button>
