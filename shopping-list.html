@@ -57,6 +57,7 @@ h1 .dot{color:var(--green);}
 .panel{
   margin-top:10px;background:var(--card);border:1px solid var(--line);
   border-radius:var(--radius);padding:14px 16px;display:none;
+  max-height:min(65vh, 520px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
 }
 .panel.open{display:block;}
 .settings-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;}
