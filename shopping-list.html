@@ -172,9 +172,10 @@ h1 .dot{color:var(--green);}
 .mini-badge.origin{background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);}
 .mini-badge.wool{background:#DCE7F3;color:#1E4B7A;}
 .mini-badge.normal{background:transparent;color:var(--ink-faint);border:1px solid var(--line);}
-.ec-price{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13.5px;text-align:right;white-space:nowrap;flex-shrink:0;}
+.ec-price{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13.5px;text-align:right;white-space:nowrap;flex-shrink:0;line-height:1.35;}
 .ec-price .unit{font-size:9.5px;color:var(--ink-faint);font-weight:500;}
-.ec-price .orig{display:block;font-size:10px;color:var(--ink-faint);text-decoration:line-through;font-weight:500;}
+.ec-price .price-step{display:block;font-size:10.5px;color:var(--ink-faint);text-decoration:line-through;font-weight:500;}
+.ec-price .price-final{display:block;color:var(--ink);}
 .ec-actions{display:flex;gap:2px;flex-shrink:0;}
 .mini-icon-btn{background:none;border:none;font-size:14px;cursor:pointer;padding:4px;opacity:0.4;}
 .mini-icon-btn.active{opacity:1;}
@@ -1041,6 +1042,15 @@ function renderEntry(product, entry, bestInfo){
   const isExpanded = expandedEntries.has(entry.id);
   const regularCalc = entry.onSpecial && entry.regularPrice ? computeUnitPrice(entry.regularPrice, entry) : null;
 
+  function priceTrailHTML(){
+    if(!calc) return `<span style="font-size:11px;color:var(--ink-faint);">—</span>`;
+    const steps = [];
+    if(regularCalc) steps.push(fmt(regularCalc.raw)); // full original price, before the special
+    if(entry.isWool) steps.push(fmt(calc.raw));        // price before the Woolworths member discount
+    const struckSteps = steps.map(v => `<span class="price-step">${v}</span>`).join('');
+    return `${struckSteps}<span class="price-final">${fmt(calc.eff)}<span class="unit">/${escapeHtml(calc.baseLabel)}</span></span>`;
+  }
+
   // --- Compact row ---
   const ec = document.createElement('div');
   ec.className = 'ec';
@@ -1060,10 +1070,7 @@ function renderEntry(product, entry, bestInfo){
       </div>
     </div>
     <div class="ec-price">
-      ${ calc ? `
-        ${ regularCalc ? `<span class="orig">${fmt(regularCalc.raw)}</span>` : '' }
-        ${fmt(calc.eff)}<span class="unit">/${escapeHtml(calc.baseLabel)}</span>
-      ` : `<span style="font-size:11px;color:var(--ink-faint);">—</span>` }
+      ${ priceTrailHTML() }
     </div>
     <div class="ec-actions">
       <button class="mini-icon-btn ${entry.preferred?'active':''}" data-role="preferredMini" title="Preferred">📌</button>
