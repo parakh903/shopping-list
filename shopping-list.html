@@ -236,6 +236,7 @@ h1 .dot{color:var(--green);}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -750,48 +751,60 @@ function connectSync(config, isInitialLoad){
   try{
     if(firebaseApp){ try{ firebaseApp.delete(); }catch(e){} }
     firebaseApp = firebase.initializeApp(config, 'shopSync_' + Date.now());
-    dbRef = firebaseApp.database().ref('shopping-list-data');
-    dbRef.on('value', (snapshot)=>{
-      try{
-        const remote = normalizeFirebaseArrays(snapshot.val());
-        if(!remote) return; // nothing remote yet — keep showing what we have
-        if(JSON.stringify(remote) === JSON.stringify(state)) return; // already in sync
+    updateSyncStatus('Connecting…', false);
 
-        const candidate = remote;
-        if(!Array.isArray(candidate.products)){
-          console.warn('Remote data looked malformed, ignoring this update.', candidate);
-          return; // don't let a bad shape wipe out a good local list
+    firebaseApp.auth().signInAnonymously().then(()=>{
+      dbRef = firebaseApp.database().ref('shopping-list-data');
+      dbRef.on('value', (snapshot)=>{
+        try{
+          const remote = normalizeFirebaseArrays(snapshot.val());
+          if(!remote) return; // nothing remote yet — keep showing what we have
+          if(JSON.stringify(remote) === JSON.stringify(state)) return; // already in sync
+
+          const candidate = remote;
+          if(!Array.isArray(candidate.products)){
+            console.warn('Remote data looked malformed, ignoring this update.', candidate);
+            return; // don't let a bad shape wipe out a good local list
+          }
+          candidate.products.forEach(p=>{ if(!Array.isArray(p.entries)) p.entries = []; });
+          if(!candidate.settings) candidate.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+
+          applyingRemote = true;
+          state = candidate;
+          render();
+          storageSet(STORAGE_KEY, JSON.stringify(state)); // persist locally too, without pushing back up
+          applyingRemote = false;
+        }catch(e){
+          console.warn('Skipped a malformed sync update:', e);
         }
-        candidate.products.forEach(p=>{ if(!Array.isArray(p.entries)) p.entries = []; });
-        if(!candidate.settings) candidate.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
-
-        applyingRemote = true;
-        state = candidate;
-        render();
-        storageSet(STORAGE_KEY, JSON.stringify(state)); // persist locally too, without pushing back up
-        applyingRemote = false;
-      }catch(e){
-        console.warn('Skipped a malformed sync update:', e);
+      }, (err)=>{
+        updateSyncStatus('Connection error — check your Firebase config and database rules.', true);
+      });
+      syncing = true;
+      updateSyncStatus('Connected — syncing live with anyone using this same link.', false);
+      storageSet(SYNC_CONFIG_KEY, JSON.stringify(config));
+      if(!isInitialLoad){
+        // Only seed Firebase with our local list if nothing real is there yet.
+        // (Previously this always pushed local data on connect, which could
+        // silently overwrite a partner's already-synced list with an empty one.)
+        dbRef.once('value').then((snapshot)=>{
+          const remote = normalizeFirebaseArrays(snapshot.val());
+          const remoteHasData = remote && Array.isArray(remote.products) && remote.products.length > 0;
+          if(!remoteHasData){
+            dbRef.set(state);
+          }
+          // else: leave it alone — the .on('value') listener above will adopt the real data
+        }).catch(()=>{ /* the .on listener above will still try to sync normally */ });
       }
-    }, (err)=>{
-      updateSyncStatus('Connection error — check your Firebase config and database rules.', true);
+    }).catch((err)=>{
+      if(err && err.code === 'auth/operation-not-allowed'){
+        updateSyncStatus('Anonymous sign-in isn\'t turned on yet in your Firebase project — enable it under Authentication → Sign-in method → Anonymous, then tap Connect again.', true);
+      } else if(err && err.code === 'auth/configuration-not-found'){
+        updateSyncStatus('Authentication isn\'t set up in this Firebase project yet — open Authentication in the Firebase console once first, then tap Connect again.', true);
+      } else {
+        updateSyncStatus('Could not sign in to sync — double check your config was pasted correctly.', true);
+      }
     });
-    syncing = true;
-    updateSyncStatus('Connected — syncing live with anyone using this same link.', false);
-    storageSet(SYNC_CONFIG_KEY, JSON.stringify(config));
-    if(!isInitialLoad){
-      // Only seed Firebase with our local list if nothing real is there yet.
-      // (Previously this always pushed local data on connect, which could
-      // silently overwrite a partner's already-synced list with an empty one.)
-      dbRef.once('value').then((snapshot)=>{
-        const remote = normalizeFirebaseArrays(snapshot.val());
-        const remoteHasData = remote && Array.isArray(remote.products) && remote.products.length > 0;
-        if(!remoteHasData){
-          dbRef.set(state);
-        }
-        // else: leave it alone — the .on('value') listener above will adopt the real data
-      }).catch(()=>{ /* the .on listener above will still try to sync normally */ });
-    }
   }catch(e){
     updateSyncStatus('Could not connect — make sure you pasted the full config object correctly.', true);
   }
