@@ -1018,6 +1018,8 @@ function renderInner(){
             <span>${storePill(usingEntry.store)}${usingEntry.brand ? ' · '+brandPill(usingEntry.brand):''}</span>
             ${ usingEntry.origin ? `<span>${countryTag(usingEntry.origin)}</span>` : '' }
             ${ usingEntry.quality ? `<span>${qualityEmoji(usingEntry.quality)}</span>` : '' }
+            ${ priceTypeBadge(usingEntry) }
+            ${ priceTrailInlineHTML(usingEntry) }
           </div>` : '' }
         ${ preferredEntry && !usingIsPreferred ? `
           <div class="best-line" style="${usingEntry ? 'margin-top:2px;' : ''}">
