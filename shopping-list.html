@@ -32,28 +32,30 @@
 }
 
 body.dark{
-  --paper:#161A12;
-  --card:#1F251A;
-  --form-bg:#232919;
-  --input-bg:#2A3121;
-  --ink:#ECEFE4;
-  --ink-soft:#B7BFA9;
-  --ink-faint:#7E876F;
-  --line:#3A4230;
-  --green:#5FB574;
-  --green-soft:#22392A;
-  --green-deep:#8FDF9F;
-  --amber:#E3A458;
-  --amber-soft:#3B2E1A;
-  --amber-deep:#F0C27E;
-  --danger:#E2685A;
-  --danger-soft:#3E2521;
-  --wool-soft:#1E2C3B;
-  --wool-deep:#8FBBE6;
-  --using-soft:#2E2138;
-  --using-deep:#D2A9E8;
+  --paper:#0E0F0C;
+  --card:#1A1B16;
+  --form-bg:#212319;
+  --input-bg:#282A1F;
+  --ink:#F5F6EF;
+  --ink-soft:#C4C7B8;
+  --ink-faint:#8D9080;
+  --line:#454737;
+  --green:#6BC77F;
+  --green-soft:#1E3323;
+  --green-deep:#93E1A3;
+  --amber:#E8AC64;
+  --amber-soft:#3D2E17;
+  --amber-deep:#F4C982;
+  --danger:#EB7266;
+  --danger-soft:#3D2420;
+  --wool-soft:#1B2C3E;
+  --wool-deep:#A3CBF2;
+  --using-soft:#2C2038;
+  --using-deep:#D8B0EC;
 }
 body.dark{background:var(--paper);}
+body.dark .tick{border-color:var(--ink-faint);}
+body.dark .icon-btn{border-color:var(--line);}
 
 *{box-sizing:border-box;}
 body{
@@ -305,7 +307,7 @@ h1 .dot{color:var(--green);}
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 </head>
-<body>
+<body class="dark">
 <div class="wrap">
   <header>
     <div class="title-row">
@@ -433,7 +435,7 @@ const DEFAULT_SETTINGS = {
   stores: ['Woolworths','Coles','Aldi','IGA','Costco','Chemist Warehouse'],
   brands: [],
   sort: { primary:'none', secondary:'none', tertiary:'none' },
-  theme: 'light'
+  theme: 'dark'
 };
 
 let state = { products: [], settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) };
@@ -547,14 +549,14 @@ const STORE_PALETTE = [
   { bg:'#DEE3F3', text:'#33397A' }  // indigo
 ];
 const STORE_PALETTE_DARK = [
-  { bg:'#22392A', text:'#9BDCA9' }, // green
-  { bg:'#3B2E1A', text:'#F0C27E' }, // amber
-  { bg:'#1E2C3B', text:'#9CC5EE' }, // blue
-  { bg:'#2E2138', text:'#D2A9E8' }, // purple
-  { bg:'#173330', text:'#7FD4C2' }, // teal
-  { bg:'#3A1F26', text:'#EFA6B8' }, // rose
-  { bg:'#33321F', text:'#CFCB9C' }, // olive
-  { bg:'#1F233B', text:'#A9AFEB' }  // indigo
+  { bg:'#1E3323', text:'#A0E8B0' }, // green
+  { bg:'#3D2E17', text:'#F4C982' }, // amber
+  { bg:'#1B2C3E', text:'#A3CBF2' }, // blue
+  { bg:'#2C2038', text:'#D8B0EC' }, // purple
+  { bg:'#153531', text:'#8FE0CC' }, // teal
+  { bg:'#3B1F26', text:'#F4AEC0' }, // rose
+  { bg:'#343320', text:'#D9D4A3' }, // olive
+  { bg:'#1D223E', text:'#B2B8F2' }  // indigo
 ];
 function currentStorePalette(){
   return document.body.classList.contains('dark') ? STORE_PALETTE_DARK : STORE_PALETTE;
