@@ -11,6 +11,7 @@
   --paper:#EFF1E8;
   --card:#FCFBF6;
   --form-bg:#FBFAF4;
+  --input-bg:#FFFFFF;
   --ink:#1F2A1D;
   --ink-soft:#5C6455;
   --ink-faint:#8B9280;
@@ -22,8 +23,37 @@
   --amber-soft:#F3E4CF;
   --amber-deep:#8A5A12;
   --danger:#B5432E;
+  --danger-soft:#F5DBD5;
+  --wool-soft:#DCE7F3;
+  --wool-deep:#1E4B7A;
+  --using-soft:#EBDDF0;
+  --using-deep:#5C2A7A;
   --radius:14px;
 }
+
+body.dark{
+  --paper:#161A12;
+  --card:#1F251A;
+  --form-bg:#232919;
+  --input-bg:#2A3121;
+  --ink:#ECEFE4;
+  --ink-soft:#B7BFA9;
+  --ink-faint:#7E876F;
+  --line:#3A4230;
+  --green:#5FB574;
+  --green-soft:#22392A;
+  --green-deep:#8FDF9F;
+  --amber:#E3A458;
+  --amber-soft:#3B2E1A;
+  --amber-deep:#F0C27E;
+  --danger:#E2685A;
+  --danger-soft:#3E2521;
+  --wool-soft:#1E2C3B;
+  --wool-deep:#8FBBE6;
+  --using-soft:#2E2138;
+  --using-deep:#D2A9E8;
+}
+body.dark{background:var(--paper);}
 
 *{box-sizing:border-box;}
 body{
@@ -32,6 +62,7 @@ body{
   color:var(--ink);
   font-family:'Inter',sans-serif;
   -webkit-font-smoothing:antialiased;
+  transition:background-color .25s ease, color .25s ease;
 }
 .wrap{max-width:640px;margin:0 auto;padding:0 0 90px;}
 
@@ -61,12 +92,23 @@ h1 .dot{color:var(--green);}
 }
 .panel.open{display:block;}
 .settings-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;}
+.theme-switch{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0;}
+.theme-switch input{opacity:0;width:0;height:0;}
+.theme-switch-track{
+  position:absolute;cursor:pointer;inset:0;background:var(--line);border-radius:20px;transition:background-color .2s ease;
+}
+.theme-switch-track::before{
+  content:"";position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:var(--card);
+  border-radius:50%;transition:transform .2s ease;box-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+.theme-switch input:checked + .theme-switch-track{background:var(--green);}
+.theme-switch input:checked + .theme-switch-track::before{transform:translateX(20px);}
 .settings-row + .settings-row{border-top:1px dashed var(--line);}
 .settings-label{font-size:13px;font-weight:500;}
 .settings-label small{display:block;color:var(--ink-faint);font-weight:400;margin-top:2px;}
 .pct-input{
   width:64px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:14px;
-  border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff;color:var(--ink);
+  border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--input-bg);color:var(--ink);
 }
 .settings-block{padding:10px 0;}
 .settings-block + .settings-block{border-top:1px dashed var(--line);}
@@ -78,7 +120,7 @@ h1 .dot{color:var(--green);}
 .chip button{background:none;border:none;color:var(--green-deep);font-size:13px;cursor:pointer;padding:0 2px;line-height:1;opacity:0.6;}
 .chip button:active{opacity:1;}
 .chip-add{display:flex;gap:6px;}
-.chip-add input{flex:1;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);}
+.chip-add input{flex:1;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--input-bg);color:var(--ink);}
 .chip-add button{background:var(--card);border:1px solid var(--line);border-radius:8px;width:34px;font-size:16px;color:var(--green-deep);cursor:pointer;}
 
 .sort-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;}
@@ -86,7 +128,7 @@ h1 .dot{color:var(--green);}
 .sort-row label{font-size:13px;font-weight:500;color:var(--ink);flex-shrink:0;}
 .sort-select{
   flex:1;max-width:190px;font-size:13px;padding:7px 8px;border:1px solid var(--line);
-  border-radius:8px;background:#fff;color:var(--ink);
+  border-radius:8px;background:var(--input-bg);color:var(--ink);
 }
 
 /* Search */
@@ -95,14 +137,14 @@ h1 .dot{color:var(--green);}
 .search-icon{position:absolute;left:12px;color:var(--ink-faint);font-size:15px;pointer-events:none;}
 .search-row input{
   width:100%;padding:9px 34px 9px 32px;border-radius:10px;border:1px solid var(--line);
-  font-size:14px;font-family:'Inter',sans-serif;background:#fff;color:var(--ink);
+  font-size:14px;font-family:'Inter',sans-serif;background:var(--input-bg);color:var(--ink);
 }
 .search-row input:focus{outline:2px solid var(--green);outline-offset:1px;}
 .clear-search{position:absolute;right:8px;background:none;border:none;color:var(--ink-faint);font-size:13px;cursor:pointer;padding:4px;}
 
 /* Suggestion dropdown */
 .suggest-box{
-  position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:40;background:#fff;
+  position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:40;background:var(--input-bg);
   border:1px solid var(--line);border-radius:9px;box-shadow:0 6px 16px rgba(20,25,15,0.12);
   max-height:170px;overflow-y:auto;display:none;
 }
@@ -124,7 +166,7 @@ h1 .dot{color:var(--green);}
 
 .card-head{display:flex;align-items:flex-start;gap:10px;padding:14px 14px;cursor:pointer;}
 .tick{
-  width:24px;height:24px;border-radius:7px;border:1.5px solid var(--line);background:#fff;
+  width:24px;height:24px;border-radius:7px;border:1.5px solid var(--line);background:var(--input-bg);
   flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;
   font-size:14px;color:transparent;
 }
@@ -142,7 +184,7 @@ h1 .dot{color:var(--green);}
   font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;
 }
 .using-tag{
-  background:#EBDDF0;color:#5C2A7A;font-family:'Archivo',sans-serif;font-weight:700;
+  background:var(--using-soft);color:var(--using-deep);font-family:'Archivo',sans-serif;font-weight:700;
   font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;
 }
 .best-price{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ink);}
@@ -161,7 +203,7 @@ h1 .dot{color:var(--green);}
   width:100%;padding:8px 10px;border-radius:8px;border:1px dashed var(--line);
   font-size:12.5px;font-style:italic;background:transparent;color:var(--ink-soft);font-family:'Inter',sans-serif;
 }
-.item-note-input:focus{outline:none;border-style:solid;border-color:var(--green);background:#fff;font-style:normal;color:var(--ink);}
+.item-note-input:focus{outline:none;border-style:solid;border-color:var(--green);background:var(--input-bg);font-style:normal;color:var(--ink);}
 
 .item-date-wrap{display:flex;align-items:center;gap:8px;padding:8px 14px 0;}
 .item-date-label{font-size:11.5px;color:var(--ink-faint);white-space:nowrap;}
@@ -169,13 +211,13 @@ h1 .dot{color:var(--green);}
   font-size:12.5px;padding:5px 8px;border-radius:8px;border:1px dashed var(--line);
   background:transparent;color:var(--ink-soft);font-family:'Inter',sans-serif;
 }
-.item-date-input:focus{outline:none;border-style:solid;border-color:var(--green);background:#fff;color:var(--ink);}
+.item-date-input:focus{outline:none;border-style:solid;border-color:var(--green);background:var(--input-bg);color:var(--ink);}
 .item-date-relative{font-size:11.5px;color:var(--ink-faint);margin-left:auto;}
 .item-repeat-input{
   width:56px;font-size:12.5px;padding:5px 8px;border-radius:8px;border:1px dashed var(--line);
   background:transparent;color:var(--ink-soft);font-family:'JetBrains Mono',monospace;text-align:center;
 }
-.item-repeat-input:focus{outline:none;border-style:solid;border-color:var(--green);background:#fff;color:var(--ink);}
+.item-repeat-input:focus{outline:none;border-style:solid;border-color:var(--green);background:var(--input-bg);color:var(--ink);}
 .restock-status{font-size:11px;font-weight:700;margin-left:auto;padding:2px 8px;border-radius:20px;white-space:nowrap;}
 .restock-status.ok{color:var(--ink-faint);background:transparent;}
 .restock-status.due-soon{color:var(--amber-deep);background:var(--amber-soft);}
@@ -193,8 +235,8 @@ h1 .dot{color:var(--green);}
 .mini-badge.pref{background:var(--amber-soft);color:var(--amber-deep);}
 .mini-badge.best{background:var(--green-soft);color:var(--green-deep);}
 .mini-badge.origin{background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);}
-.mini-badge.wool{background:#DCE7F3;color:#1E4B7A;}
-.mini-badge.using{background:#EBDDF0;color:#5C2A7A;}
+.mini-badge.wool{background:var(--wool-soft);color:var(--wool-deep);}
+.mini-badge.using{background:var(--using-soft);color:var(--using-deep);}
 .mini-badge.normal{background:transparent;color:var(--ink-faint);border:1px solid var(--line);}
 .ec-price{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13.5px;text-align:right;white-space:nowrap;flex-shrink:0;line-height:1.35;}
 .ec-price .unit{font-size:9.5px;color:var(--ink-faint);font-weight:500;}
@@ -211,7 +253,7 @@ h1 .dot{color:var(--green);}
 .field label{font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-faint);font-weight:600;}
 .field input, .field select{
   font-family:'Inter',sans-serif;font-size:13.5px;border:1px solid var(--line);border-radius:7px;
-  padding:6px 8px;background:#fff;color:var(--ink);width:100%;
+  padding:6px 8px;background:var(--input-bg);color:var(--ink);width:100%;
 }
 .field.num input{font-family:'JetBrains Mono',monospace;}
 .field.full{grid-column:1/-1;}
@@ -223,14 +265,14 @@ h1 .dot{color:var(--green);}
 .quality-row{display:flex;align-items:center;gap:10px;margin-top:10px;}
 .quality-row > label{font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-faint);font-weight:600;}
 .quality-buttons{display:flex;gap:4px;}
-.quality-buttons button{background:#fff;border:1px solid var(--line);border-radius:8px;font-size:16px;padding:4px 9px;cursor:pointer;opacity:0.35;}
+.quality-buttons button{background:var(--input-bg);border:1px solid var(--line);border-radius:8px;font-size:16px;padding:4px 9px;cursor:pointer;opacity:0.35;}
 .quality-buttons button.active{opacity:1;border-color:var(--amber);background:var(--amber-soft);}
 
 .form-actions{display:flex;justify-content:space-between;align-items:center;margin-top:12px;}
 .form-actions .left-btns{display:flex;gap:6px;}
 .text-btn{background:none;border:1px solid var(--line);border-radius:8px;font-size:12px;padding:6px 10px;cursor:pointer;color:var(--ink-soft);}
 .text-btn.pref-active{border-color:var(--amber);background:var(--amber-soft);color:var(--amber-deep);}
-.text-btn.using-active{border-color:#5C2A7A;background:#EBDDF0;color:#5C2A7A;}
+.text-btn.using-active{border-color:var(--using-deep);background:var(--using-soft);color:var(--using-deep);}
 .text-btn.danger:active{color:var(--danger);border-color:var(--danger);}
 
 .add-entry-btn{
@@ -241,7 +283,7 @@ h1 .dot{color:var(--green);}
 
 .toast{
   position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(10px);
-  background:var(--ink);color:#fff;padding:9px 16px;border-radius:20px;font-size:12.5px;
+  background:#1F2A1D;color:#fff;padding:9px 16px;border-radius:20px;font-size:12.5px;
   opacity:0;transition:opacity .2s ease, transform .2s ease;pointer-events:none;z-index:50;
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -301,7 +343,7 @@ h1 .dot{color:var(--green);}
         <label class="text-btn" for="importFileInput" style="flex:1;text-align:center;padding:10px;cursor:pointer;">📂 Upload CSV file</label>
         <input type="file" id="importFileInput" accept=".csv,text/csv" style="display:none;">
       </div>
-      <textarea id="importText" placeholder="…or paste CSV text here&#10;Item,Store,Brand,Price,Qty,Unit,Notes,Origin&#10;Milk,Woolworths,Coles Full Cream,3.50,2,L,,Australia" style="width:100%;min-height:110px;font-family:'JetBrains Mono',monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fff;color:var(--ink);resize:vertical;"></textarea>
+      <textarea id="importText" placeholder="…or paste CSV text here&#10;Item,Store,Brand,Price,Qty,Unit,Notes,Origin&#10;Milk,Woolworths,Coles Full Cream,3.50,2,L,,Australia" style="width:100%;min-height:110px;font-family:'JetBrains Mono',monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--input-bg);color:var(--ink);resize:vertical;"></textarea>
       <div style="display:flex;gap:8px;margin-top:8px;">
         <button class="text-btn" id="importCsvBtn" style="flex:1;text-align:center;padding:10px;background:var(--green);color:#fff;border:none;font-weight:600;">Import rows</button>
         <button class="text-btn" id="exportCsvBtn" style="flex:1;text-align:center;padding:10px;">⬇ Download CSV</button>
@@ -325,6 +367,13 @@ h1 .dot{color:var(--green);}
     </div>
 
     <div class="panel" id="settingsPanel">
+      <div class="settings-row">
+        <div class="settings-label">Dark mode<small>Easier on the eyes, especially at night</small></div>
+        <label class="theme-switch">
+          <input type="checkbox" id="darkModeToggle">
+          <span class="theme-switch-track"></span>
+        </label>
+      </div>
       <div class="settings-row">
         <div class="settings-label">Woolworths monthly discount<small>e.g. member deal</small></div>
         <input type="number" class="pct-input" id="woolMonthly" value="10" min="0" max="100" step="0.5">
@@ -356,7 +405,7 @@ h1 .dot{color:var(--green);}
       <div class="settings-block">
         <div class="settings-label">Shared list<small>Sync live between devices (e.g. with your partner). Needs a one-time free setup — ask me for the steps.</small></div>
         <div id="syncStatus" style="font-size:12px;color:var(--ink-soft);margin:8px 0;">Not connected — this device only</div>
-        <textarea id="firebaseConfigInput" placeholder='Paste your Firebase config here, the whole { ... } object' style="width:100%;min-height:70px;font-family:'JetBrains Mono',monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff;color:var(--ink);resize:vertical;"></textarea>
+        <textarea id="firebaseConfigInput" placeholder='Paste your Firebase config here, the whole { ... } object' style="width:100%;min-height:70px;font-family:'JetBrains Mono',monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--input-bg);color:var(--ink);resize:vertical;"></textarea>
         <div style="display:flex;gap:8px;margin-top:8px;">
           <button class="text-btn" id="connectSyncBtn" style="flex:1;text-align:center;padding:9px;background:var(--green);color:#fff;border:none;font-weight:600;">Connect</button>
           <button class="text-btn" id="disconnectSyncBtn" style="flex:1;text-align:center;padding:9px;">Disconnect</button>
@@ -383,7 +432,8 @@ const DEFAULT_SETTINGS = {
   woolMonthly: 10, woolGiftcard: 4,
   stores: ['Woolworths','Coles','Aldi','IGA','Costco','Chemist Warehouse'],
   brands: [],
-  sort: { primary:'none', secondary:'none', tertiary:'none' }
+  sort: { primary:'none', secondary:'none', tertiary:'none' },
+  theme: 'light'
 };
 
 let state = { products: [], settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) };
@@ -496,12 +546,25 @@ const STORE_PALETTE = [
   { bg:'#E5E3D6', text:'#5A5636' }, // olive
   { bg:'#DEE3F3', text:'#33397A' }  // indigo
 ];
+const STORE_PALETTE_DARK = [
+  { bg:'#22392A', text:'#9BDCA9' }, // green
+  { bg:'#3B2E1A', text:'#F0C27E' }, // amber
+  { bg:'#1E2C3B', text:'#9CC5EE' }, // blue
+  { bg:'#2E2138', text:'#D2A9E8' }, // purple
+  { bg:'#173330', text:'#7FD4C2' }, // teal
+  { bg:'#3A1F26', text:'#EFA6B8' }, // rose
+  { bg:'#33321F', text:'#CFCB9C' }, // olive
+  { bg:'#1F233B', text:'#A9AFEB' }  // indigo
+];
+function currentStorePalette(){
+  return document.body.classList.contains('dark') ? STORE_PALETTE_DARK : STORE_PALETTE;
+}
 function getStoreColor(name){
   const s = (name||'').trim().toLowerCase();
   if(!s) return { bg:'transparent', text:'inherit' };
   let hash = 0;
   for(let i=0;i<s.length;i++){ hash = (hash*31 + s.charCodeAt(i)) >>> 0; }
-  return STORE_PALETTE[hash % STORE_PALETTE.length];
+  return currentStorePalette()[hash % STORE_PALETTE.length];
 }
 function storePill(name){
   if(!name) return escapeHtml('—');
@@ -515,7 +578,7 @@ function getBrandColor(name){
   let hash = 0;
   // offset multiplier so brand colors land differently than store colors even for similar names
   for(let i=0;i<s.length;i++){ hash = (hash*17 + s.charCodeAt(i) + 7) >>> 0; }
-  return STORE_PALETTE[hash % STORE_PALETTE.length];
+  return currentStorePalette()[hash % STORE_PALETTE.length];
 }
 function brandPill(name){
   if(!name) return '';
@@ -781,10 +844,16 @@ async function loadState(){
 
   document.getElementById('woolMonthly').value = state.settings.woolMonthly;
   document.getElementById('woolGiftcard').value = state.settings.woolGiftcard;
+  applyTheme(state.settings.theme === 'dark');
+  document.getElementById('darkModeToggle').checked = state.settings.theme === 'dark';
   buildSortSelects();
   updateCombinedLabel();
   render();
   loadSyncConfig();
+}
+
+function applyTheme(isDark){
+  document.body.classList.toggle('dark', isDark);
 }
 
 async function saveState(){
@@ -1730,6 +1799,12 @@ document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
   textarea.focus();
   textarea.select();
   try{ textarea.setSelectionRange(0, textarea.value.length); }catch(e){}
+});
+
+document.getElementById('darkModeToggle').addEventListener('change', e=>{
+  state.settings.theme = e.target.checked ? 'dark' : 'light';
+  applyTheme(e.target.checked);
+  saveState(); render();
 });
 
 document.getElementById('woolMonthly').addEventListener('input', e=>{
