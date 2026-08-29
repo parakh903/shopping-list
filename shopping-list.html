@@ -119,6 +119,7 @@ h1 .dot{color:var(--green);}
 
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
 .card.done{opacity:0.55;}
+.card.needs-restock{border-left:3px solid var(--danger);}
 .card.done .card-name{text-decoration:line-through;color:var(--ink-faint);}
 
 .card-head{display:flex;align-items:flex-start;gap:10px;padding:14px 14px;cursor:pointer;}
@@ -170,6 +171,15 @@ h1 .dot{color:var(--green);}
 }
 .item-date-input:focus{outline:none;border-style:solid;border-color:var(--green);background:#fff;color:var(--ink);}
 .item-date-relative{font-size:11.5px;color:var(--ink-faint);margin-left:auto;}
+.item-repeat-input{
+  width:56px;font-size:12.5px;padding:5px 8px;border-radius:8px;border:1px dashed var(--line);
+  background:transparent;color:var(--ink-soft);font-family:'JetBrains Mono',monospace;text-align:center;
+}
+.item-repeat-input:focus{outline:none;border-style:solid;border-color:var(--green);background:#fff;color:var(--ink);}
+.restock-status{font-size:11px;font-weight:700;margin-left:auto;padding:2px 8px;border-radius:20px;white-space:nowrap;}
+.restock-status.ok{color:var(--ink-faint);background:transparent;}
+.restock-status.due-soon{color:var(--amber-deep);background:var(--amber-soft);}
+.restock-status.overdue{color:#fff;background:var(--danger);}
 .expand-all-btn{background:none;border:none;color:var(--green-deep);font-size:12px;font-weight:600;cursor:pointer;padding:4px 6px;}
 
 .entry-wrap{border-bottom:1px dashed var(--line);}
@@ -399,7 +409,8 @@ const SORT_FIELDS = [
   { value:'store-desc', label:'Store (Z–A)' },
   { value:'unticked-first', label:'Not ticked first' },
   { value:'ticked-first', label:'Ticked first' },
-  { value:'stale-first', label:'Longest since bought' }
+  { value:'stale-first', label:'Longest since bought' },
+  { value:'restock-due', label:'Due to restock first' }
 ];
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
@@ -467,7 +478,11 @@ function updateStatsLine(){
   const total = state.products.length;
   if(total===0){ el.textContent = 'Your ledger is empty'; return; }
   const done = state.products.filter(p=>p.tick).length;
-  el.textContent = `${total} item${total===1?'':'s'} · ${done} done`;
+  const dueCount = state.products.filter(p=>{
+    const s = getRestockStatus(p);
+    return s && s.state==='overdue';
+  }).length;
+  el.textContent = `${total} item${total===1?'':'s'} · ${done} done` + (dueCount>0 ? ` · 🔔 ${dueCount} to restock` : '');
 }
 
 // Deterministic color per store name, so the same store always gets the same tag color
@@ -559,6 +574,25 @@ function relativeDateText(dateStr){
   return d.toLocaleDateString(undefined,{day:'numeric',month:'short'});
 }
 
+// How a product's restock reminder stands right now, based on lastBoughtDate + repurchaseDays.
+// Returns null if no period is set or it's never been bought (nothing to compare against).
+function getRestockStatus(product){
+  if(!product.repurchaseDays || !product.lastBoughtDate) return null;
+  const bought = new Date(product.lastBoughtDate + 'T00:00:00');
+  if(isNaN(bought.getTime())) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const daysSince = Math.round((today - bought) / 86400000);
+  const daysRemaining = product.repurchaseDays - daysSince;
+  if(daysRemaining <= 0){
+    const overdueBy = Math.abs(daysRemaining);
+    return { state:'overdue', daysRemaining, text: overdueBy===0 ? 'Due today' : `Overdue by ${overdueBy} day${overdueBy===1?'':'s'}` };
+  }
+  if(daysRemaining <= 2){
+    return { state:'due-soon', daysRemaining, text: daysRemaining===1 ? 'Due tomorrow' : `Due in ${daysRemaining} days` };
+  }
+  return { state:'ok', daysRemaining, text: `Next check in ${daysRemaining} days` };
+}
+
 function fmt(n){
   if(n===null||n===undefined||isNaN(n)) return '—';
   return '$'+n.toFixed(2);
@@ -631,6 +665,14 @@ function compareBy(key, a, b){
       const da = a.lastBoughtDate ? new Date(a.lastBoughtDate).getTime() : -Infinity;
       const db = b.lastBoughtDate ? new Date(b.lastBoughtDate).getTime() : -Infinity;
       return da - db;
+    }
+    case 'restock-due': {
+      // items with no period set (nothing to compare) always sort to the end
+      const sa = getRestockStatus(a), sb = getRestockStatus(b);
+      if(!sa && !sb) return 0;
+      if(!sa) return 1;
+      if(!sb) return -1;
+      return sa.daysRemaining - sb.daysRemaining; // most overdue (most negative) first
     }
     default: return 0;
   }
@@ -723,6 +765,7 @@ async function loadState(){
         if(typeof p.tick !== 'boolean') p.tick = false;
         if(typeof p.notes !== 'string') p.notes = '';
         if(typeof p.lastBoughtDate !== 'string') p.lastBoughtDate = null;
+        if(typeof p.repurchaseDays !== 'number') p.repurchaseDays = null;
         (p.entries||[]).forEach(e=>{
           if(typeof e.preferred !== 'boolean') e.preferred = false;
           if(typeof e.usingNow !== 'boolean') e.usingNow = false;
@@ -995,7 +1038,8 @@ function renderInner(){
   for(const product of visibleProducts){
     const card = document.createElement('div');
     const isOpen = openCardId===product.id;
-    card.className = 'card' + (isOpen ? ' open' : '') + (product.tick ? ' done' : '');
+    const restockStatus = getRestockStatus(product);
+    card.className = 'card' + (isOpen ? ' open' : '') + (product.tick ? ' done' : '') + (restockStatus && restockStatus.state==='overdue' ? ' needs-restock' : '');
 
     const bestInfo = bestEntry(product);
     const headline = bestInfo ? bestInfo.headline : null;
@@ -1042,7 +1086,10 @@ function renderInner(){
           </div>` : '' }
         ${ !headline && !preferredEntry && !usingEntry ? `<div class="no-entries">No prices added yet</div>` : '' }
         ${ product.notes ? `<div class="no-entries" style="color:var(--ink-soft);font-style:normal;">📝 ${escapeHtml(product.notes)}</div>` : '' }
-        ${ product.lastBoughtDate ? `<div class="no-entries" style="color:var(--ink-faint);font-style:normal;">🗓 Bought ${relativeDateText(product.lastBoughtDate)}</div>` : '' }
+        ${ product.lastBoughtDate ? `<div class="no-entries" style="color:var(--ink-faint);font-style:normal;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span>🗓 Bought ${relativeDateText(product.lastBoughtDate)}</span>
+              ${ restockStatus && restockStatus.state!=='ok' ? `<span class="restock-status ${restockStatus.state}">${restockStatus.state==='overdue'?'🔔 ':''}${restockStatus.text}</span>` : '' }
+            </div>` : '' }
       </div>
       <button class="del-product" data-id="${product.id}" title="Delete item">✕</button>
       <span class="chev">▶</span>
@@ -1098,6 +1145,21 @@ function renderInner(){
       saveState(); render();
     });
     entriesWrap.appendChild(dateWrap);
+
+    const repeatWrap = document.createElement('div');
+    repeatWrap.className = 'item-date-wrap';
+    repeatWrap.innerHTML = `
+      <span class="item-date-label">🔁 Buy again every</span>
+      <input type="number" min="1" step="1" class="item-repeat-input" placeholder="days" value="${product.repurchaseDays||''}">
+      <span class="item-date-label">days</span>
+      ${ restockStatus ? `<span class="restock-status ${restockStatus.state}">${restockStatus.text}</span>` : '' }
+    `;
+    repeatWrap.querySelector('input').addEventListener('change', e=>{
+      const val = parseInt(e.target.value, 10);
+      product.repurchaseDays = (val && val>0) ? val : null;
+      saveState(); render();
+    });
+    entriesWrap.appendChild(repeatWrap);
 
     if(product.entries.length>0){
       const allExpanded = product.entries.every(e=>expandedEntries.has(e.id));
@@ -1432,7 +1494,7 @@ function addProduct(){
   const input = document.getElementById('newProductInput');
   const name = input.value.trim();
   if(!name) return;
-  const p = { id: uid(), name, tick:false, notes:'', lastBoughtDate:null, entries: [] };
+  const p = { id: uid(), name, tick:false, notes:'', lastBoughtDate:null, repurchaseDays:null, entries: [] };
   state.products.unshift(p);
   openCardId = p.id;
   input.value = '';
@@ -1518,6 +1580,7 @@ function importFromCSV(text){
   const colRegular = findCol(headers,'regular','rrp','normal price','regularprice');
   const colPreferred = findCol(headers,'preferred','favourite','favorite');
   const colLastBought = findCol(headers,'lastbought','last bought','bought date','purchasedate');
+  const colRepurchaseDays = findCol(headers,'repurchasedays','repurchase days','buy again every');
   const colUsing = findCol(headers,'usingnow','using now','using');
 
   if(colName===-1) return { added:0, itemsTouched:0, error:'Could not find an Item/Product/Name column.' };
@@ -1532,13 +1595,17 @@ function importFromCSV(text){
 
     let product = state.products.find(p=>p.name.toLowerCase()===name.toLowerCase());
     if(!product){
-      product = { id: uid(), name, tick:false, notes:'', lastBoughtDate:null, entries: [] };
+      product = { id: uid(), name, tick:false, notes:'', lastBoughtDate:null, repurchaseDays:null, entries: [] };
       state.products.push(product);
     }
     if(colTick!==-1 && toBool(r[colTick])) product.tick = true;
     if(colLastBought!==-1 && r[colLastBought]){
       const parsed = new Date(r[colLastBought]);
       if(!isNaN(parsed.getTime())) product.lastBoughtDate = parsed.toISOString().slice(0,10);
+    }
+    if(colRepurchaseDays!==-1 && r[colRepurchaseDays]){
+      const days = parseInt(r[colRepurchaseDays], 10);
+      if(days > 0) product.repurchaseDays = days;
     }
     itemsTouched.add(product.id);
 
@@ -1619,16 +1686,16 @@ function csvEscape(v){
   return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
 }
 function exportToCSV(){
-  const fields = ['Item','Tick','LastBought','Store','Brand','Price','Qty','Unit','Notes','Origin','Quality','Special','RegularPrice','Preferred','UsingNow'];
+  const fields = ['Item','Tick','LastBought','RepurchaseDays','Store','Brand','Price','Qty','Unit','Notes','Origin','Quality','Special','RegularPrice','Preferred','UsingNow'];
   const lines = [fields.join(',')];
   for(const p of state.products){
     if(p.entries.length===0){
-      lines.push([p.name, p.tick?'Yes':'No', p.lastBoughtDate||'', '','','','','',p.notes||'','','','','','',''].map(csvEscape).join(','));
+      lines.push([p.name, p.tick?'Yes':'No', p.lastBoughtDate||'', p.repurchaseDays||'', '','','','','',p.notes||'','','','','','',''].map(csvEscape).join(','));
       continue;
     }
     for(const e of p.entries){
       lines.push([
-        p.name, p.tick?'Yes':'No', p.lastBoughtDate||'', e.store, e.brand, e.price, e.qty, e.unit,
+        p.name, p.tick?'Yes':'No', p.lastBoughtDate||'', p.repurchaseDays||'', e.store, e.brand, e.price, e.qty, e.unit,
         e.notes, e.origin, e.quality, e.onSpecial?'Yes':'', e.regularPrice, e.preferred?'Yes':'', e.usingNow?'Yes':''
       ].map(csvEscape).join(','));
     }
