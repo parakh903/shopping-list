@@ -417,6 +417,10 @@ h1 .dot{color:var(--green);}
           <button class="text-btn" id="forcePullBtn" style="flex:1;text-align:center;padding:9px;font-size:11px;">⬇ Pull shared list here</button>
         </div>
       </div>
+      <div class="settings-block">
+        <div class="settings-label" style="color:var(--danger);">Danger zone<small>Permanently deletes every item on this device. Your master list of stores/brands and your discount settings are kept.</small></div>
+        <button class="text-btn" id="wipeAllBtn" style="width:100%;margin-top:8px;padding:9px;text-align:center;border-color:var(--danger);color:var(--danger);">🗑 Delete all items</button>
+      </div>
     </div>
     <datalist id="storeDatalist"></datalist>
     <datalist id="brandDatalist"></datalist>
@@ -1888,6 +1892,21 @@ document.getElementById('forcePullBtn').addEventListener('click', ()=>{
       updateSyncStatus('Nothing usable found in the shared list yet.', true);
     }
   });
+});
+
+document.getElementById('wipeAllBtn').addEventListener('click', ()=>{
+  const count = state.products.length;
+  if(count===0){ showToast('There\'s nothing to delete — your list is already empty.'); return; }
+  let msg = `This will permanently delete all ${count} item(s). This cannot be undone.`;
+  if(syncing){
+    msg += '\n\n⚠️ You are connected to a shared list — this will also erase it for anyone else connected (e.g. your wife\'s device), the moment they next sync.';
+  }
+  msg += '\n\nMake sure you have a CSV backup first if you want to keep this data. Continue?';
+  if(!confirm(msg)) return;
+  state.products = [];
+  saveState(); // this also pushes the wipe to Firebase if connected, matching the warning above
+  render();
+  showToast('All items deleted.');
 });
 
 loadState();
