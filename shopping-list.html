@@ -313,8 +313,7 @@ h1 .dot{color:var(--green);}
     <div class="title-row">
       <h1>Shop<span class="dot">·</span>Ledger</h1>
       <div class="icon-btns">
-        <button class="icon-btn" id="searchBtn" title="Search">⌕</button>
-        <button class="icon-btn" id="addBtn" title="Add item">+</button>
+        <button class="icon-btn" id="searchBtn" title="Find or add">⌕</button>
         <button class="icon-btn" id="importBtn" title="Import">⬆</button>
         <button class="icon-btn" id="sortBtn" title="Sort">↕</button>
         <button class="icon-btn" id="gearBtn" title="Settings">⚙</button>
@@ -325,17 +324,11 @@ h1 .dot{color:var(--green);}
     <div class="panel" id="searchPanel">
       <div class="search-row" style="margin-top:0;">
         <span class="search-icon">⌕</span>
-        <input type="text" id="searchInput" placeholder="Search items, stores, brands or notes…" autocomplete="off">
+        <input type="text" id="searchInput" placeholder="Find an item, or type a new one to add…" autocomplete="off">
         <button class="clear-search" id="clearSearch" style="display:none;">✕</button>
       </div>
-    </div>
-
-    <div class="panel" id="addPanel">
-      <div class="search-row" style="margin-top:0;">
-        <div class="field-wrap">
-          <input type="text" id="newProductInput" placeholder="Add an item, e.g. Olive oil" autocomplete="off">
-        </div>
-        <button class="modal-add-btn" id="addProductBtn" style="margin-left:8px;">+</button>
+      <div id="quickAddRow" style="display:none;margin-top:8px;">
+        <button class="text-btn" id="quickAddBtn" style="width:100%;text-align:center;padding:10px;background:var(--green);color:#fff;border:none;font-weight:600;"></button>
       </div>
     </div>
 
@@ -893,6 +886,21 @@ async function saveState(){
 const SYNC_CONFIG_KEY = 'shop-ledger-sync-config';
 let firebaseApp = null, dbRef = null, syncing = false, applyingRemote = false;
 
+// Baked directly into the file so every device auto-connects on first load, with no
+// copy-pasting required — this matters because browser storage (where a manually
+// pasted config would otherwise live) can get wiped by iOS Safari, private/in-app
+// browser views, etc. Firebase config values are meant to be public in client code
+// (real security comes from database rules + auth, not from hiding this).
+const EMBEDDED_SYNC_CONFIG = {
+  apiKey: "AIzaSyDaDOad0qElHFkiDkXVEK4ZEzvthvik2v4",
+  authDomain: "shopping-list-38520.firebaseapp.com",
+  databaseURL: "https://shopping-list-38520-default-rtdb.firebaseio.com",
+  projectId: "shopping-list-38520",
+  storageBucket: "shopping-list-38520.firebasestorage.app",
+  messagingSenderId: "585784927483",
+  appId: "1:585784927483:web:6955c1313d76deba887c5e"
+};
+
 function updateSyncStatus(msg, isError){
   const el = document.getElementById('syncStatus');
   if(!el) return;
@@ -989,19 +997,31 @@ function disconnectSync(){
   syncing = false;
   dbRef = null;
   updateSyncStatus('Not connected — this device only', false);
-  storageSet(SYNC_CONFIG_KEY, '');
+  storageSet(SYNC_CONFIG_KEY, 'DISABLED'); // remembers "I chose to disconnect" so it doesn't silently reconnect
 }
 
 async function loadSyncConfig(){
   try{
     const res = await storageGet(SYNC_CONFIG_KEY);
+    if(res && res.value === 'DISABLED'){
+      const input = document.getElementById('firebaseConfigInput');
+      if(input && EMBEDDED_SYNC_CONFIG) input.value = JSON.stringify(EMBEDDED_SYNC_CONFIG, null, 2);
+      return; // respect an explicit disconnect — don't auto-reconnect
+    }
     if(res && res.value){
       const cfg = JSON.parse(res.value);
       const input = document.getElementById('firebaseConfigInput');
       if(input) input.value = JSON.stringify(cfg, null, 2);
       connectSync(cfg, true);
+      return;
     }
-  }catch(e){ /* not set up yet */ }
+  }catch(e){ /* nothing saved yet — fall through to the embedded default below */ }
+
+  if(EMBEDDED_SYNC_CONFIG){
+    const input = document.getElementById('firebaseConfigInput');
+    if(input) input.value = JSON.stringify(EMBEDDED_SYNC_CONFIG, null, 2);
+    connectSync(EMBEDDED_SYNC_CONFIG, true);
+  }
 }
 
 let toastTimer;
@@ -1541,8 +1561,8 @@ function renderEntry(product, entry, bestInfo){
 }
 
 function closeAllPanels(){
-  ['searchPanel','addPanel','importPanel','sortPanel','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));
-  ['searchBtn','addBtn','importBtn','sortBtn','gearBtn'].forEach(id=>document.getElementById(id).classList.remove('is-active'));
+  ['searchPanel','importPanel','sortPanel','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));
+  ['searchBtn','importBtn','sortBtn','gearBtn'].forEach(id=>document.getElementById(id).classList.remove('is-active'));
 }
 function togglePanel(panelId, btnId, onOpen){
   const isOpen = document.getElementById(panelId).classList.contains('open');
@@ -1556,53 +1576,56 @@ function togglePanel(panelId, btnId, onOpen){
 document.getElementById('searchBtn').addEventListener('click', ()=> togglePanel('searchPanel','searchBtn', ()=>{
   setTimeout(()=> document.getElementById('searchInput').focus(), 50);
 }));
-document.getElementById('addBtn').addEventListener('click', ()=> togglePanel('addPanel','addBtn', ()=>{
-  document.getElementById('newProductInput').value = '';
-  setTimeout(()=> document.getElementById('newProductInput').focus(), 50);
-}));
 document.getElementById('importBtn').addEventListener('click', ()=> togglePanel('importPanel','importBtn'));
 document.getElementById('gearBtn').addEventListener('click', ()=> togglePanel('settingsPanel','gearBtn'));
 document.getElementById('sortBtn').addEventListener('click', ()=> togglePanel('sortPanel','sortBtn'));
 
-document.getElementById('addProductBtn').addEventListener('click', addProduct);
-document.getElementById('newProductInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addProduct(); });
-attachSuggestions(
-  document.getElementById('newProductInput'),
-  ()=> sortAlpha(state.products.map(p=>p.name)),
-  (val)=>{
-    const existing = state.products.find(p=>p.name.toLowerCase()===val.toLowerCase());
-    document.getElementById('newProductInput').value = '';
-    if(existing){
-      openCardId = existing.id; searchQuery=''; document.getElementById('searchInput').value='';
-      closeAllPanels();
-      render();
-      document.getElementById('productList').scrollIntoView({behavior:'smooth', block:'start'});
-    }
-  }
-);
-function addProduct(){
-  const input = document.getElementById('newProductInput');
-  const name = input.value.trim();
-  if(!name) return;
+function addProduct(name){
   const p = { id: uid(), name, tick:false, notes:'', lastBoughtDate:null, repurchaseDays:null, entries: [] };
   state.products.unshift(p);
   openCardId = p.id;
-  input.value = '';
-  closeAllPanels();
-  saveState(); render();
+  saveState();
+  searchQuery = '';
+  searchInput.value = '';
+  clearSearchBtn.style.display = 'none';
+  quickAddRow.style.display = 'none';
+  render();
+  document.getElementById('productList').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 const searchInput = document.getElementById('searchInput');
 const clearSearchBtn = document.getElementById('clearSearch');
+const quickAddRow = document.getElementById('quickAddRow');
+const quickAddBtn = document.getElementById('quickAddBtn');
+
+function updateQuickAdd(){
+  const q = searchQuery.trim();
+  if(!q){ quickAddRow.style.display = 'none'; return; }
+  const exists = state.products.some(p=>p.name.toLowerCase()===q.toLowerCase());
+  if(exists){ quickAddRow.style.display = 'none'; return; }
+  quickAddBtn.textContent = `+ Add "${q}" as a new item`;
+  quickAddRow.style.display = 'block';
+}
+
 searchInput.addEventListener('input', e=>{
   searchQuery = e.target.value;
   clearSearchBtn.style.display = searchQuery ? 'block' : 'none';
+  updateQuickAdd();
   render();
+});
+searchInput.addEventListener('keydown', e=>{
+  if(e.key==='Enter' && quickAddRow.style.display!=='none'){
+    addProduct(searchQuery.trim());
+  }
+});
+quickAddBtn.addEventListener('click', ()=>{
+  addProduct(searchQuery.trim());
 });
 clearSearchBtn.addEventListener('click', ()=>{
   searchQuery = '';
   searchInput.value = '';
   clearSearchBtn.style.display = 'none';
+  quickAddRow.style.display = 'none';
   render();
   searchInput.focus();
 });
