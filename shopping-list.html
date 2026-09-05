@@ -244,6 +244,7 @@ h1 .dot{color:var(--green);}
 .ec-price .unit{font-size:9.5px;color:var(--ink-faint);font-weight:500;}
 .ec-price .price-step{display:block;font-size:10.5px;color:var(--ink-faint);text-decoration:line-through;font-weight:500;}
 .ec-price .price-final{display:block;color:var(--ink);}
+.ec-price .price-unit-sub{display:block;font-size:10px;color:var(--ink-faint);font-weight:500;margin-top:1px;text-decoration:none;}
 .ec-actions{display:flex;gap:2px;flex-shrink:0;}
 .mini-icon-btn{background:none;border:none;font-size:14px;cursor:pointer;padding:4px;opacity:0.4;}
 .mini-icon-btn.active{opacity:1;}
@@ -683,28 +684,37 @@ function priceTypeBadge(entry){
   return `<span class="mini-badge normal">Reg. price</span>`;
 }
 
-// Shared price-trail logic: original (if special) → pre-discount (if Woolworths) → final price.
-// Used both inline (item's collapsed main line) and stacked (each store row).
+// Shows the actual shelf prices you'd compare in-store — original total → special total →
+// Woolworths-discounted total — plus one clean unit price (per kg/L/ea) based on whichever
+// of those is lowest, for comparing across different pack sizes/stores.
 function getPriceTrail(entry){
   const calc = effectiveUnitPrice(entry);
-  if(!calc) return null;
-  const regularCalc = entry.onSpecial && entry.regularPrice ? computeUnitPrice(entry.regularPrice, entry) : null;
+  const price = Number(entry.price);
+  if(!calc || !price) return null;
+
+  const regularPrice = entry.onSpecial && entry.regularPrice ? Number(entry.regularPrice) : null;
   const struckValues = [];
-  if(regularCalc) struckValues.push(fmt(regularCalc.raw)); // full original, before the special
-  if(entry.isWool) struckValues.push(fmt(calc.raw));        // price before the Woolworths member discount
-  return { struckValues, finalText: `${fmt(calc.eff)}<span class="unit">/${escapeHtml(calc.baseLabel)}</span>` };
+  if(regularPrice) struckValues.push(fmt(regularPrice));       // full original shelf price, before the special
+  if(entry.isWool) struckValues.push(fmt(price));               // shelf price before the Woolworths member discount
+
+  const finalTotal = entry.isWool ? price * (1 - combinedDiscount()) : price;
+  return {
+    struckValues,
+    finalText: fmt(finalTotal),
+    unitText: `${fmt(calc.eff)}/${escapeHtml(calc.baseLabel)}`
+  };
 }
 function priceTrailBlockHTML(entry){
   const trail = getPriceTrail(entry);
   if(!trail) return `<span style="font-size:11px;color:var(--ink-faint);">—</span>`;
   const struck = trail.struckValues.map(v=>`<span class="price-step">${v}</span>`).join('');
-  return `${struck}<span class="price-final">${trail.finalText}</span>`;
+  return `${struck}<span class="price-final">${trail.finalText}</span><span class="price-unit-sub">${trail.unitText}</span>`;
 }
 function priceTrailInlineHTML(entry){
   const trail = getPriceTrail(entry);
   if(!trail) return `<span class="best-price">no price yet</span>`;
   const struck = trail.struckValues.map(v=>`<span style="text-decoration:line-through;color:var(--ink-faint);font-weight:500;">${v}</span>`).join(' ');
-  return (struck ? struck + ' ' : '') + `<span class="best-price">${trail.finalText}</span>`;
+  return (struck ? struck + ' ' : '') + `<span class="best-price">${trail.finalText}</span> <span style="font-size:10.5px;color:var(--ink-faint);">(${trail.unitText})</span>`;
 }
 
 function productMatchesSearch(product, q){
