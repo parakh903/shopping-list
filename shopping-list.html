@@ -32,14 +32,14 @@
 }
 
 body.dark{
-  --paper:#242620;
-  --card:#0A0B08;
-  --form-bg:#141510;
-  --input-bg:#1C1D16;
-  --ink:#F5F6EF;
-  --ink-soft:#C4C7B8;
-  --ink-faint:#8D9080;
-  --line:#454737;
+  --paper:#2B2B2B;
+  --card:#0D0D0D;
+  --form-bg:#161616;
+  --input-bg:#1E1E1E;
+  --ink:#F5F5F3;
+  --ink-soft:#C6C6C2;
+  --ink-faint:#8F8F8B;
+  --line:#464646;
   --green:#6BC77F;
   --green-soft:#1E3323;
   --green-deep:#93E1A3;
@@ -165,6 +165,27 @@ h1 .dot{color:var(--green);}
 .card.done{opacity:0.55;}
 .card.needs-restock{border-left:3px solid var(--danger);}
 .card.done .card-name{text-decoration:line-through;color:var(--ink-faint);}
+
+/* Item status shown via color instead of strikethrough/fading (dark mode only —
+   this glow effect is designed for a dark background):
+   still-to-buy items glow gold, bought items turn green. */
+body.dark .card.done{opacity:1;}
+body.dark .card:not(.done) .card-name,
+body.dark .card:not(.done) .best-price,
+body.dark .card:not(.done) .price-final,
+body.dark .card:not(.done) .no-entries{
+  color:#FFD35C;
+  text-shadow:0 0 6px rgba(255,211,92,0.5);
+}
+body.dark .card.done .card-name,
+body.dark .card.done .best-price,
+body.dark .card.done .price-final,
+body.dark .card.done .no-entries{
+  color:#4ADE80;
+  text-decoration:none;
+  text-shadow:none;
+}
+body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-shadow:none;}
 
 .card-head{display:flex;align-items:flex-start;gap:10px;padding:14px 14px;cursor:pointer;}
 .tick{
