@@ -356,7 +356,7 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
     <div class="stats-line" id="statsLine">Your ledger is empty</div>
 
     <div class="backup-banner" id="backupBanner">
-      <div class="bb-text">📦 Time for your monthly backup<small>Downloads a full JSON backup of everything</small></div>
+      <div class="bb-text">📦 Time for your monthly backup<small>Downloads a CSV + full JSON backup</small></div>
       <button class="bb-download" id="backupBannerDownloadBtn">Download</button>
       <button class="bb-dismiss" id="backupBannerDismissBtn">Not now</button>
     </div>
@@ -1903,17 +1903,10 @@ function exportToCSV(){
   }
   return lines.join('\n');
 }
-document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
-  const csv = exportToCSV();
-  const textarea = document.getElementById('importText');
-  textarea.value = csv;
-  const resultEl = document.getElementById('importResult');
-
-  const today = new Date().toISOString().slice(0,10);
-  const filename = `shop-ledger-${today}.csv`;
-
+// Generic "create a blob and trigger a download" helper, shared by CSV and JSON backups.
+function triggerFileDownload(content, filename, mimeType){
   try{
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1922,9 +1915,26 @@ document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
     a.click();
     document.body.removeChild(a);
     setTimeout(()=> URL.revokeObjectURL(url), 2000);
+    return true;
+  }catch(e){ return false; }
+}
+
+function downloadCSVFile(){
+  const csv = exportToCSV();
+  const filename = `shop-ledger-${todayISO()}.csv`;
+  const ok = triggerFileDownload(csv, filename, 'text/csv;charset=utf-8;');
+  return { ok, filename, csv };
+}
+
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+  const textarea = document.getElementById('importText');
+  const resultEl = document.getElementById('importResult');
+  const res = downloadCSVFile();
+  textarea.value = res.csv;
+  if(res.ok){
     resultEl.style.color = 'var(--green-deep)';
-    resultEl.textContent = `Downloading ${filename} — on iPhone, open it from Files and choose "Open in Numbers" (or share → Numbers). If nothing happened, the text is also selected below to copy manually.`;
-  }catch(e){
+    resultEl.textContent = `Downloading ${res.filename} — on iPhone, open it from Files and choose "Open in Numbers" (or share → Numbers). If nothing happened, the text is also selected below to copy manually.`;
+  }else{
     resultEl.style.color = 'var(--ink-soft)';
     resultEl.textContent = `Download didn't start — but your list is selected below, copy it manually instead.`;
   }
@@ -1950,29 +1960,26 @@ function exportToJSON(){
   return JSON.stringify(backup, null, 2);
 }
 
-// Does the actual JSON backup download. Shared by the Settings button and the
-// backup reminder banner so both stay in sync (same file, same "last backup" tracking).
-function downloadJSONBackup(){
+function downloadJSONFile(){
   const json = exportToJSON();
-  const today = todayISO();
-  const filename = `shop-ledger-backup-${today}.json`;
-  try{
-    const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(()=> URL.revokeObjectURL(url), 2000);
-    state.settings.lastBackupDate = today;
-    saveState();
-    updateBackupBanner();
-    return { ok:true, filename };
-  }catch(e){
-    return { ok:false };
-  }
+  const filename = `shop-ledger-backup-${todayISO()}.json`;
+  const ok = triggerFileDownload(json, filename, 'application/json;charset=utf-8;');
+  return { ok, filename };
+}
+
+// Records that a backup happened "now" — shared bookkeeping so the reminder
+// banner and last-backup label stay accurate no matter which button was used.
+function recordBackupNow(){
+  state.settings.lastBackupDate = todayISO();
+  saveState();
+  updateBackupBanner();
+}
+
+// Used by the Settings "Download full backup" button — JSON only.
+function downloadJSONBackup(){
+  const res = downloadJSONFile();
+  if(res.ok) recordBackupNow();
+  return res;
 }
 
 document.getElementById('backupJsonBtn').addEventListener('click', ()=>{
@@ -1986,6 +1993,18 @@ document.getElementById('backupJsonBtn').addEventListener('click', ()=>{
     resultEl.textContent = 'Could not create the backup file — try again.';
   }
 });
+
+// Used by the reminder banner — downloads BOTH the CSV and the full JSON backup.
+// A small stagger between the two helps mobile browsers treat them as separate,
+// intentional downloads rather than blocking the second one.
+function downloadBothBackups(){
+  const csvRes = downloadCSVFile();
+  setTimeout(()=>{
+    const jsonRes = downloadJSONFile();
+    if(csvRes.ok || jsonRes.ok) recordBackupNow();
+  }, 400);
+  return csvRes;
+}
 
 // --- Backup reminder banner ---
 function formatLastBackupLabel(){
@@ -2027,8 +2046,8 @@ function updateBackupBanner(){
   if(lbl) lbl.textContent = formatLastBackupLabel();
 }
 document.getElementById('backupBannerDownloadBtn').addEventListener('click', ()=>{
-  const res = downloadJSONBackup();
-  showToast(res.ok ? 'Backup downloaded ✓' : 'Could not create the backup file — try again.');
+  const res = downloadBothBackups();
+  showToast(res.ok ? 'Backups downloaded ✓ (CSV + JSON)' : 'Could not create the backup file — try again.');
 });
 document.getElementById('backupBannerDismissBtn').addEventListener('click', ()=>{
   state.settings.backupDismissedDate = todayISO();
