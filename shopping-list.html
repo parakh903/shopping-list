@@ -439,8 +439,19 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
           </label>
         </div>
         <div class="settings-row">
+          <div class="settings-label">Remind me</div>
+          <select class="sort-select" id="backupReminderMode" style="max-width:150px;">
+            <option value="monthly">Monthly, on a day</option>
+            <option value="interval">Every few days</option>
+          </select>
+        </div>
+        <div class="settings-row" id="backupReminderDayRow">
           <div class="settings-label">Day of month<small>Which day the reminder shows up</small></div>
           <input type="number" class="pct-input" id="backupReminderDay" value="1" min="1" max="28" step="1">
+        </div>
+        <div class="settings-row" id="backupReminderIntervalRow" style="display:none;">
+          <div class="settings-label">Every<small>Days since your last backup</small></div>
+          <input type="number" class="pct-input" id="backupReminderIntervalDays" value="7" min="1" max="90" step="1">
         </div>
         <div class="settings-row">
           <div class="settings-label" style="font-weight:400;">Last backup<small id="lastBackupLabel">Never</small></div>
@@ -502,7 +513,9 @@ const DEFAULT_SETTINGS = {
   sort: { primary:'none', secondary:'none', tertiary:'none' },
   theme: 'dark',
   backupReminderEnabled: true,
+  backupReminderMode: 'monthly', // 'monthly' (fixed day of month) or 'interval' (every N days)
   backupReminderDay: 1,
+  backupReminderIntervalDays: 7,
   lastBackupDate: null,      // ISO date (yyyy-mm-dd) of the last downloaded backup
   backupDismissedDate: null  // ISO date the banner was last dismissed, to keep it quiet the rest of that day
 };
@@ -930,7 +943,10 @@ async function loadState(){
   applyTheme(state.settings.theme === 'dark');
   document.getElementById('darkModeToggle').checked = state.settings.theme === 'dark';
   document.getElementById('backupReminderToggle').checked = !!state.settings.backupReminderEnabled;
+  document.getElementById('backupReminderMode').value = state.settings.backupReminderMode || 'monthly';
   document.getElementById('backupReminderDay').value = state.settings.backupReminderDay || 1;
+  document.getElementById('backupReminderIntervalDays').value = state.settings.backupReminderIntervalDays || 7;
+  updateBackupReminderModeUI();
   buildSortSelects();
   updateCombinedLabel();
   updateBackupBanner();
@@ -1980,14 +1996,28 @@ function formatLastBackupLabel(){
 }
 function shouldShowBackupBanner(){
   if(!state.settings.backupReminderEnabled) return false;
-  const today = new Date();
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
-  const targetDay = Math.min(state.settings.backupReminderDay || 1, daysInMonth);
-  if(today.getDate() !== targetDay) return false;
   const todayStr = todayISO();
   if(state.settings.lastBackupDate === todayStr) return false;
   if(state.settings.backupDismissedDate === todayStr) return false;
-  return true;
+
+  if(state.settings.backupReminderMode === 'interval'){
+    if(!state.settings.lastBackupDate) return true; // never backed up yet
+    const last = new Date(state.settings.lastBackupDate + 'T00:00:00');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const daysSince = Math.round((today - last) / 86400000);
+    return daysSince >= (state.settings.backupReminderIntervalDays || 7);
+  }
+
+  // monthly mode: fixed day of month
+  const today = new Date();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
+  const targetDay = Math.min(state.settings.backupReminderDay || 1, daysInMonth);
+  return today.getDate() === targetDay;
+}
+function updateBackupReminderModeUI(){
+  const isInterval = state.settings.backupReminderMode === 'interval';
+  document.getElementById('backupReminderDayRow').style.display = isInterval ? 'none' : 'flex';
+  document.getElementById('backupReminderIntervalRow').style.display = isInterval ? 'flex' : 'none';
 }
 function updateBackupBanner(){
   const banner = document.getElementById('backupBanner');
@@ -2014,6 +2044,18 @@ document.getElementById('backupReminderDay').addEventListener('input', e=>{
   if(isNaN(v)) v = 1;
   v = Math.max(1, Math.min(28, v));
   state.settings.backupReminderDay = v;
+  saveState(); updateBackupBanner();
+});
+document.getElementById('backupReminderMode').addEventListener('change', e=>{
+  state.settings.backupReminderMode = e.target.value;
+  updateBackupReminderModeUI();
+  saveState(); updateBackupBanner();
+});
+document.getElementById('backupReminderIntervalDays').addEventListener('input', e=>{
+  let v = parseInt(e.target.value, 10);
+  if(isNaN(v)) v = 7;
+  v = Math.max(1, Math.min(90, v));
+  state.settings.backupReminderIntervalDays = v;
   saveState(); updateBackupBanner();
 });
 
