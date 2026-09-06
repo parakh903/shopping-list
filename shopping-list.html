@@ -356,7 +356,7 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
     <div class="stats-line" id="statsLine">Your ledger is empty</div>
 
     <div class="backup-banner" id="backupBanner">
-      <div class="bb-text">📦 Time for your monthly backup<small>Downloads a CSV + full JSON backup</small></div>
+      <div class="bb-text">📦 Time for your monthly backup<small>Downloads a full JSON backup + CSV</small></div>
       <button class="bb-download" id="backupBannerDownloadBtn">Download</button>
       <button class="bb-dismiss" id="backupBannerDismissBtn">Not now</button>
     </div>
@@ -456,6 +456,7 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
         <div class="settings-row">
           <div class="settings-label" style="font-weight:400;">Last backup<small id="lastBackupLabel">Never</small></div>
         </div>
+        <button class="text-btn" id="testBackupBtn" style="width:100%;text-align:center;padding:10px;margin-top:4px;">⬇ Download all backups now (test)</button>
       </div>
       <div class="settings-block">
         <div class="settings-label">Your stores<small>Shows up as suggestions when typing a store</small></div>
@@ -1994,16 +1995,17 @@ document.getElementById('backupJsonBtn').addEventListener('click', ()=>{
   }
 });
 
-// Used by the reminder banner — downloads BOTH the CSV and the full JSON backup.
-// A small stagger between the two helps mobile browsers treat them as separate,
-// intentional downloads rather than blocking the second one.
+// Used by the reminder banner (and the manual "test" button in Settings) —
+// downloads BOTH the full JSON backup and the CSV, a couple seconds apart so
+// mobile browsers treat them as two separate, intentional downloads rather
+// than blocking the second one as a popup.
 function downloadBothBackups(){
-  const csvRes = downloadCSVFile();
+  const jsonRes = downloadJSONFile();
   setTimeout(()=>{
-    const jsonRes = downloadJSONFile();
-    if(csvRes.ok || jsonRes.ok) recordBackupNow();
-  }, 400);
-  return csvRes;
+    const csvRes = downloadCSVFile();
+    if(jsonRes.ok || csvRes.ok) recordBackupNow();
+  }, 2500);
+  return jsonRes;
 }
 
 // --- Backup reminder banner ---
@@ -2047,7 +2049,11 @@ function updateBackupBanner(){
 }
 document.getElementById('backupBannerDownloadBtn').addEventListener('click', ()=>{
   const res = downloadBothBackups();
-  showToast(res.ok ? 'Backups downloaded ✓ (CSV + JSON)' : 'Could not create the backup file — try again.');
+  showToast(res.ok ? 'Backups downloaded ✓ (JSON + CSV)' : 'Could not create the backup file — try again.');
+});
+document.getElementById('testBackupBtn').addEventListener('click', ()=>{
+  const res = downloadBothBackups();
+  showToast(res.ok ? 'Test backup ✓ — JSON now, CSV in ~2.5s' : 'Could not create the backup file — try again.');
 });
 document.getElementById('backupBannerDismissBtn').addEventListener('click', ()=>{
   state.settings.backupDismissedDate = todayISO();
