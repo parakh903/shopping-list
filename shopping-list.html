@@ -86,6 +86,18 @@ h1 .dot{color:var(--green);}
 .icon-btn.is-active{border-color:var(--green);color:var(--green-deep);background:var(--green-soft);}
 .stats-line{font-size:11.5px;color:var(--ink-faint);margin-top:2px;}
 
+/* Backup reminder banner */
+.backup-banner{
+  display:none;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;
+  background:var(--amber-soft);border:1px solid var(--amber);border-radius:10px;
+}
+.backup-banner.show{display:flex;}
+.backup-banner .bb-text{flex:1;font-size:12.5px;color:var(--amber-deep);font-weight:600;line-height:1.35;}
+.backup-banner .bb-text small{display:block;font-weight:400;color:var(--ink-soft);margin-top:1px;}
+.backup-banner button{flex-shrink:0;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;border-radius:8px;padding:7px 10px;cursor:pointer;}
+.backup-banner .bb-download{background:var(--amber);border:none;color:#1F2A1D;}
+.backup-banner .bb-dismiss{background:none;border:1px solid var(--amber);color:var(--amber-deep);}
+
 /* Settings / Sort panels */
 .panel{
   margin-top:10px;background:var(--card);border:1px solid var(--line);
@@ -343,6 +355,12 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
     </div>
     <div class="stats-line" id="statsLine">Your ledger is empty</div>
 
+    <div class="backup-banner" id="backupBanner">
+      <div class="bb-text">📦 Time for your monthly backup<small>Downloads a full JSON backup of everything</small></div>
+      <button class="bb-download" id="backupBannerDownloadBtn">Download</button>
+      <button class="bb-dismiss" id="backupBannerDismissBtn">Not now</button>
+    </div>
+
     <div class="panel" id="searchPanel">
       <div class="search-row" style="margin-top:0;">
         <span class="search-icon">⌕</span>
@@ -413,6 +431,22 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
         <span class="pct-input" id="woolCombined" style="border:none;background:none;font-weight:700;">13.4%</span>
       </div>
       <div class="settings-block">
+        <div class="settings-row" style="padding-top:0;">
+          <div class="settings-label">Backup reminder<small>Nags you to download a backup once a month</small></div>
+          <label class="theme-switch">
+            <input type="checkbox" id="backupReminderToggle">
+            <span class="theme-switch-track"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">Day of month<small>Which day the reminder shows up</small></div>
+          <input type="number" class="pct-input" id="backupReminderDay" value="1" min="1" max="28" step="1">
+        </div>
+        <div class="settings-row">
+          <div class="settings-label" style="font-weight:400;">Last backup<small id="lastBackupLabel">Never</small></div>
+        </div>
+      </div>
+      <div class="settings-block">
         <div class="settings-label">Your stores<small>Shows up as suggestions when typing a store</small></div>
         <div class="chip-list" id="storeChips"></div>
         <div class="chip-add">
@@ -466,7 +500,11 @@ const DEFAULT_SETTINGS = {
   stores: ['Woolworths','Coles','Aldi','IGA','Costco','Chemist Warehouse'],
   brands: [],
   sort: { primary:'none', secondary:'none', tertiary:'none' },
-  theme: 'dark'
+  theme: 'dark',
+  backupReminderEnabled: true,
+  backupReminderDay: 1,
+  lastBackupDate: null,      // ISO date (yyyy-mm-dd) of the last downloaded backup
+  backupDismissedDate: null  // ISO date the banner was last dismissed, to keep it quiet the rest of that day
 };
 
 let state = { products: [], settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) };
@@ -891,8 +929,11 @@ async function loadState(){
   document.getElementById('woolGiftcard').value = state.settings.woolGiftcard;
   applyTheme(state.settings.theme === 'dark');
   document.getElementById('darkModeToggle').checked = state.settings.theme === 'dark';
+  document.getElementById('backupReminderToggle').checked = !!state.settings.backupReminderEnabled;
+  document.getElementById('backupReminderDay').value = state.settings.backupReminderDay || 1;
   buildSortSelects();
   updateCombinedLabel();
+  updateBackupBanner();
   render();
   loadSyncConfig();
 }
@@ -1893,10 +1934,11 @@ function exportToJSON(){
   return JSON.stringify(backup, null, 2);
 }
 
-document.getElementById('backupJsonBtn').addEventListener('click', ()=>{
+// Does the actual JSON backup download. Shared by the Settings button and the
+// backup reminder banner so both stay in sync (same file, same "last backup" tracking).
+function downloadJSONBackup(){
   const json = exportToJSON();
-  const resultEl = document.getElementById('importResult');
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayISO();
   const filename = `shop-ledger-backup-${today}.json`;
   try{
     const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
@@ -1908,12 +1950,71 @@ document.getElementById('backupJsonBtn').addEventListener('click', ()=>{
     a.click();
     document.body.removeChild(a);
     setTimeout(()=> URL.revokeObjectURL(url), 2000);
-    resultEl.style.color = 'var(--green-deep)';
-    resultEl.textContent = `Downloading ${filename} — a complete backup of everything, including your sync config if connected. Keep it somewhere safe (Files app, email to yourself, etc.).`;
+    state.settings.lastBackupDate = today;
+    saveState();
+    updateBackupBanner();
+    return { ok:true, filename };
   }catch(e){
+    return { ok:false };
+  }
+}
+
+document.getElementById('backupJsonBtn').addEventListener('click', ()=>{
+  const resultEl = document.getElementById('importResult');
+  const res = downloadJSONBackup();
+  if(res.ok){
+    resultEl.style.color = 'var(--green-deep)';
+    resultEl.textContent = `Downloading ${res.filename} — a complete backup of everything, including your sync config if connected. Keep it somewhere safe (Files app, email to yourself, etc.).`;
+  }else{
     resultEl.style.color = 'var(--danger)';
     resultEl.textContent = 'Could not create the backup file — try again.';
   }
+});
+
+// --- Backup reminder banner ---
+function formatLastBackupLabel(){
+  const d = state.settings.lastBackupDate;
+  if(!d) return 'Never';
+  const rel = relativeDateText(d);
+  return rel || d;
+}
+function shouldShowBackupBanner(){
+  if(!state.settings.backupReminderEnabled) return false;
+  const today = new Date();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
+  const targetDay = Math.min(state.settings.backupReminderDay || 1, daysInMonth);
+  if(today.getDate() !== targetDay) return false;
+  const todayStr = todayISO();
+  if(state.settings.lastBackupDate === todayStr) return false;
+  if(state.settings.backupDismissedDate === todayStr) return false;
+  return true;
+}
+function updateBackupBanner(){
+  const banner = document.getElementById('backupBanner');
+  if(!banner) return;
+  banner.classList.toggle('show', shouldShowBackupBanner());
+  const lbl = document.getElementById('lastBackupLabel');
+  if(lbl) lbl.textContent = formatLastBackupLabel();
+}
+document.getElementById('backupBannerDownloadBtn').addEventListener('click', ()=>{
+  const res = downloadJSONBackup();
+  showToast(res.ok ? 'Backup downloaded ✓' : 'Could not create the backup file — try again.');
+});
+document.getElementById('backupBannerDismissBtn').addEventListener('click', ()=>{
+  state.settings.backupDismissedDate = todayISO();
+  saveState();
+  updateBackupBanner();
+});
+document.getElementById('backupReminderToggle').addEventListener('change', e=>{
+  state.settings.backupReminderEnabled = e.target.checked;
+  saveState(); updateBackupBanner();
+});
+document.getElementById('backupReminderDay').addEventListener('input', e=>{
+  let v = parseInt(e.target.value, 10);
+  if(isNaN(v)) v = 1;
+  v = Math.max(1, Math.min(28, v));
+  state.settings.backupReminderDay = v;
+  saveState(); updateBackupBanner();
 });
 
 document.getElementById('restoreFileInput').addEventListener('change', (e)=>{
