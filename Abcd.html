@@ -1,0 +1,2240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Shop Ledger</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root{
+  --paper:#EFF1E8;
+  --card:#FCFBF6;
+  --form-bg:#FBFAF4;
+  --input-bg:#FFFFFF;
+  --ink:#1F2A1D;
+  --ink-soft:#5C6455;
+  --ink-faint:#8B9280;
+  --line:#D9DBCB;
+  --green:#2F6B3F;
+  --green-soft:#DEEBDE;
+  --green-deep:#1F4A2A;
+  --amber:#B9722A;
+  --amber-soft:#F3E4CF;
+  --amber-deep:#8A5A12;
+  --danger:#B5432E;
+  --danger-soft:#F5DBD5;
+  --wool-soft:#DCE7F3;
+  --wool-deep:#1E4B7A;
+  --using-soft:#EBDDF0;
+  --using-deep:#5C2A7A;
+  --radius:14px;
+}
+
+body.dark{
+  --paper:#2B2B2B;
+  --card:#0D0D0D;
+  --form-bg:#161616;
+  --input-bg:#1E1E1E;
+  --ink:#F5F5F3;
+  --ink-soft:#C6C6C2;
+  --ink-faint:#8F8F8B;
+  --line:#464646;
+  --green:#6BC77F;
+  --green-soft:#1E3323;
+  --green-deep:#93E1A3;
+  --amber:#E8AC64;
+  --amber-soft:#3D2E17;
+  --amber-deep:#F4C982;
+  --danger:#EB7266;
+  --danger-soft:#3D2420;
+  --wool-soft:#1B2C3E;
+  --wool-deep:#A3CBF2;
+  --using-soft:#2C2038;
+  --using-deep:#D8B0EC;
+}
+body.dark{background:var(--paper);}
+body.dark .tick{border-color:var(--ink-faint);}
+body.dark .icon-btn{border-color:var(--line);}
+
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  transition:background-color .25s ease, color .25s ease;
+}
+.wrap{max-width:640px;margin:0 auto;padding:0 0 90px;}
+
+/* Header */
+header{
+  position:sticky;top:0;z-index:20;
+  background:var(--paper);
+  padding:12px 16px 10px;
+  border-bottom:1px solid var(--line);
+}
+.title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+h1{font-family:'Archivo',sans-serif;font-weight:800;font-size:21px;letter-spacing:-0.02em;margin:0;}
+h1 .dot{color:var(--green);}
+.icon-btns{display:flex;gap:6px;flex-shrink:0;}
+.icon-btn{
+  background:none;border:1px solid var(--line);border-radius:9px;
+  width:32px;height:32px;font-size:14px;color:var(--ink-soft);cursor:pointer;
+}
+.icon-btn.is-active{border-color:var(--green);color:var(--green-deep);background:var(--green-soft);}
+.stats-line{font-size:11.5px;color:var(--ink-faint);margin-top:2px;}
+
+/* Backup reminder banner */
+.backup-banner{
+  display:none;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;
+  background:var(--amber-soft);border:1px solid var(--amber);border-radius:10px;
+}
+.backup-banner.show{display:flex;}
+.backup-banner .bb-text{flex:1;font-size:12.5px;color:var(--amber-deep);font-weight:600;line-height:1.35;}
+.backup-banner .bb-text small{display:block;font-weight:400;color:var(--ink-soft);margin-top:1px;}
+.backup-banner button{flex-shrink:0;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;border-radius:8px;padding:7px 10px;cursor:pointer;}
+.backup-banner .bb-download{background:var(--amber);border:none;color:#1F2A1D;}
+.backup-banner .bb-dismiss{background:none;border:1px solid var(--amber);color:var(--amber-deep);}
+
+/* Settings / Sort panels */
+.panel{
+  margin-top:10px;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--radius);padding:14px 16px;display:none;
+  max-height:min(65vh, 520px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+}
+.panel.open{display:block;}
+.settings-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;}
+.theme-switch{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0;}
+.theme-switch input{opacity:0;width:0;height:0;}
+.theme-switch-track{
+  position:absolute;cursor:pointer;inset:0;background:var(--line);border-radius:20px;transition:background-color .2s ease;
+}
+.theme-switch-track::before{
+  content:"";position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:var(--card);
+  border-radius:50%;transition:transform .2s ease;box-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+.theme-switch input:checked + .theme-switch-track{background:var(--green);}
+.theme-switch input:checked + .theme-switch-track::before{transform:translateX(20px);}
+.settings-row + .settings-row{border-top:1px dashed var(--line);}
+.settings-label{font-size:13px;font-weight:500;}
+.settings-label small{display:block;color:var(--ink-faint);font-weight:400;margin-top:2px;}
+.pct-input{
+  width:64px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:14px;
+  border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--input-bg);color:var(--ink);
+}
+.settings-block{padding:10px 0;}
+.settings-block + .settings-block{border-top:1px dashed var(--line);}
+.chip-list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}
+.chip{
+  display:flex;align-items:center;gap:5px;background:var(--green-soft);color:var(--green-deep);
+  font-size:12px;font-weight:600;padding:4px 6px 4px 10px;border-radius:20px;
+}
+.chip button{background:none;border:none;color:var(--green-deep);font-size:13px;cursor:pointer;padding:0 2px;line-height:1;opacity:0.6;}
+.chip button:active{opacity:1;}
+.chip-add{display:flex;gap:6px;}
+.chip-add input{flex:1;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--input-bg);color:var(--ink);}
+.chip-add button{background:var(--card);border:1px solid var(--line);border-radius:8px;width:34px;font-size:16px;color:var(--green-deep);cursor:pointer;}
+
+.sort-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;}
+.sort-row + .sort-row{border-top:1px dashed var(--line);}
+.sort-row label{font-size:13px;font-weight:500;color:var(--ink);flex-shrink:0;}
+.sort-select{
+  flex:1;max-width:190px;font-size:13px;padding:7px 8px;border:1px solid var(--line);
+  border-radius:8px;background:var(--input-bg);color:var(--ink);
+}
+
+/* Search */
+.field-wrap{flex:1;position:relative;}
+.search-row{position:relative;display:flex;align-items:center;margin-top:8px;}
+.search-icon{position:absolute;left:12px;color:var(--ink-faint);font-size:15px;pointer-events:none;}
+.search-row input{
+  width:100%;padding:9px 34px 9px 32px;border-radius:10px;border:1px solid var(--line);
+  font-size:14px;font-family:'Inter',sans-serif;background:var(--input-bg);color:var(--ink);
+}
+.search-row input:focus{outline:2px solid var(--green);outline-offset:1px;}
+.clear-search{position:absolute;right:8px;background:none;border:none;color:var(--ink-faint);font-size:13px;cursor:pointer;padding:4px;}
+
+/* Suggestion dropdown */
+.suggest-box{
+  position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:40;background:var(--input-bg);
+  border:1px solid var(--line);border-radius:9px;box-shadow:0 6px 16px rgba(20,25,15,0.12);
+  max-height:170px;overflow-y:auto;display:none;
+}
+.suggest-item{padding:9px 12px;font-size:13.5px;color:var(--ink);cursor:pointer;border-bottom:1px solid var(--line);}
+.suggest-item:last-child{border-bottom:none;}
+.suggest-item:active{background:var(--green-soft);}
+.suggest-item .match{font-weight:700;color:var(--green-deep);}
+
+/* Product list */
+.list{padding:14px 12px 0;display:flex;flex-direction:column;gap:12px;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--ink-faint);}
+.empty-state .big{font-size:36px;margin-bottom:8px;}
+.empty-state p{font-size:14px;margin:4px 0;}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+.card.done{opacity:0.55;}
+.card.needs-restock{border-left:3px solid var(--danger);}
+.card.done .card-name{text-decoration:line-through;color:var(--ink-faint);}
+
+/* Item status shown via color instead of strikethrough/fading (dark mode only —
+   this glow effect is designed for a dark background):
+   still-to-buy items glow gold, bought items turn green. */
+body.dark .card.done{opacity:1;}
+body.dark .card:not(.done) .card-name,
+body.dark .card:not(.done) .best-price,
+body.dark .card:not(.done) .price-final,
+body.dark .card:not(.done) .no-entries{
+  color:#FFD35C;
+  text-shadow:0 0 6px rgba(255,211,92,0.5);
+}
+body.dark .card.done .card-name,
+body.dark .card.done .best-price,
+body.dark .card.done .price-final,
+body.dark .card.done .no-entries{
+  color:#4ADE80;
+  text-decoration:none;
+  text-shadow:none;
+}
+body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-shadow:none;}
+
+.card-head{display:flex;align-items:flex-start;gap:10px;padding:14px 14px;cursor:pointer;}
+.tick{
+  width:24px;height:24px;border-radius:7px;border:1.5px solid var(--line);background:var(--input-bg);
+  flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:14px;color:transparent;
+}
+.tick.checked{background:var(--green);border-color:var(--green);color:#fff;}
+.card-name-wrap{flex:1;min-width:0;}
+.card-name{font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;border:none;background:none;color:var(--ink);width:100%;padding:0;}
+.card-name:focus{outline:none;border-bottom:1px solid var(--green);}
+.best-line{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12.5px;color:var(--ink-soft);flex-wrap:wrap;}
+.best-tag{
+  background:var(--green-soft);color:var(--green-deep);font-family:'Archivo',sans-serif;font-weight:700;
+  font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;
+}
+.pref-tag{
+  background:var(--amber-soft);color:var(--amber-deep);font-family:'Archivo',sans-serif;font-weight:700;
+  font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;
+}
+.using-tag{
+  background:var(--using-soft);color:var(--using-deep);font-family:'Archivo',sans-serif;font-weight:700;
+  font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;
+}
+.best-price{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ink);}
+.no-entries{font-size:12.5px;color:var(--ink-faint);font-style:italic;margin-top:4px;}
+.chev{color:var(--ink-faint);font-size:13px;transition:transform .15s ease;flex-shrink:0;padding:4px;margin-top:2px;}
+.card.open .chev{transform:rotate(90deg);}
+.del-product{background:none;border:none;color:var(--ink-faint);font-size:16px;cursor:pointer;padding:4px 6px;flex-shrink:0;}
+.del-product:active{color:var(--danger);}
+
+/* Entries */
+.entries{display:none;border-top:1px dashed var(--line);}
+.card.open .entries{display:block;}
+.entries-toolbar{display:flex;justify-content:flex-end;padding:8px 14px 0;}
+.item-note-wrap{padding:10px 14px 0;}
+.item-note-input{
+  width:100%;padding:8px 10px;border-radius:8px;border:1px dashed var(--line);
+  font-size:12.5px;font-style:italic;background:transparent;color:var(--ink-soft);font-family:'Inter',sans-serif;
+}
+.item-note-input:focus{outline:none;border-style:solid;border-color:var(--green);background:var(--input-bg);font-style:normal;color:var(--ink);}
+
+.item-date-wrap{display:flex;align-items:center;gap:8px;padding:8px 14px 0;}
+.item-date-label{font-size:11.5px;color:var(--ink-faint);white-space:nowrap;}
+.item-date-input{
+  font-size:12.5px;padding:5px 8px;border-radius:8px;border:1px dashed var(--line);
+  background:transparent;color:var(--ink-soft);font-family:'Inter',sans-serif;
+}
+.item-date-input:focus{outline:none;border-style:solid;border-color:var(--green);background:var(--input-bg);color:var(--ink);}
+.item-date-relative{font-size:11.5px;color:var(--ink-faint);margin-left:auto;}
+.item-repeat-input{
+  width:56px;font-size:12.5px;padding:5px 8px;border-radius:8px;border:1px dashed var(--line);
+  background:transparent;color:var(--ink-soft);font-family:'JetBrains Mono',monospace;text-align:center;
+}
+.item-repeat-input:focus{outline:none;border-style:solid;border-color:var(--green);background:var(--input-bg);color:var(--ink);}
+.restock-status{font-size:11px;font-weight:700;margin-left:auto;padding:2px 8px;border-radius:20px;white-space:nowrap;}
+.restock-status.ok{color:var(--ink-faint);background:transparent;}
+.restock-status.due-soon{color:var(--amber-deep);background:var(--amber-soft);}
+.restock-status.overdue{color:#fff;background:var(--danger);}
+.expand-all-btn{background:none;border:none;color:var(--green-deep);font-size:12px;font-weight:600;cursor:pointer;padding:4px 6px;}
+
+.entry-wrap{border-bottom:1px dashed var(--line);}
+.ec{display:flex;align-items:center;gap:8px;padding:11px 14px;}
+.ec-tap{flex:1;min-width:0;cursor:pointer;}
+.ec-line1{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--ink);}
+.ec-line1 .placeholder{color:var(--ink-faint);font-weight:500;font-style:italic;}
+.ec-line2{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:3px;}
+.mini-badge{font-size:9.5px;padding:2px 6px;border-radius:20px;font-weight:700;white-space:nowrap;}
+.mini-badge.special{background:var(--amber-soft);color:var(--amber-deep);}
+.mini-badge.pref{background:var(--amber-soft);color:var(--amber-deep);}
+.mini-badge.best{background:var(--green-soft);color:var(--green-deep);}
+.mini-badge.origin{background:var(--paper);color:var(--ink-soft);border:1px solid var(--line);}
+.mini-badge.wool{background:var(--wool-soft);color:var(--wool-deep);}
+.mini-badge.using{background:var(--using-soft);color:var(--using-deep);}
+.mini-badge.normal{background:transparent;color:var(--ink-faint);border:1px solid var(--line);}
+.ec-price{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13.5px;text-align:right;white-space:nowrap;flex-shrink:0;line-height:1.35;}
+.ec-price .unit{font-size:9.5px;color:var(--ink-faint);font-weight:500;}
+.ec-price .price-step{display:block;font-size:10.5px;color:var(--ink-faint);text-decoration:line-through;font-weight:500;}
+.ec-price .price-final{display:block;color:var(--ink);}
+.ec-price .price-unit-sub{display:block;font-size:10px;color:var(--ink-faint);font-weight:500;margin-top:1px;text-decoration:none;}
+.ec-actions{display:flex;gap:2px;flex-shrink:0;}
+.mini-icon-btn{background:none;border:none;font-size:14px;cursor:pointer;padding:4px;opacity:0.4;}
+.mini-icon-btn.active{opacity:1;}
+.mini-icon-btn:active{opacity:1;}
+
+.entry-form{padding:2px 14px 14px;background:var(--form-bg);border-top:1px dashed var(--line);}
+.entry-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px 8px;padding-top:10px;}
+.field{display:flex;flex-direction:column;gap:2px;position:relative;}
+.field label{font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-faint);font-weight:600;}
+.field input, .field select{
+  font-family:'Inter',sans-serif;font-size:13.5px;border:1px solid var(--line);border-radius:7px;
+  padding:6px 8px;background:var(--input-bg);color:var(--ink);width:100%;
+}
+.field.num input{font-family:'JetBrains Mono',monospace;}
+.field.full{grid-column:1/-1;}
+.field input:focus, .field select:focus{outline:2px solid var(--green);outline-offset:0;}
+
+.toggle-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin-top:10px;}
+.toggle-row input{width:13px;height:13px;accent-color:var(--green);}
+
+.quality-row{display:flex;align-items:center;gap:10px;margin-top:10px;}
+.quality-row > label{font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-faint);font-weight:600;}
+.quality-buttons{display:flex;gap:4px;}
+.quality-buttons button{background:var(--input-bg);border:1px solid var(--line);border-radius:8px;font-size:16px;padding:4px 9px;cursor:pointer;opacity:0.35;}
+.quality-buttons button.active{opacity:1;border-color:var(--amber);background:var(--amber-soft);}
+
+.form-actions{display:flex;justify-content:space-between;align-items:center;margin-top:12px;}
+.form-actions .left-btns{display:flex;gap:6px;}
+.text-btn{background:none;border:1px solid var(--line);border-radius:8px;font-size:12px;padding:6px 10px;cursor:pointer;color:var(--ink-soft);}
+.text-btn.pref-active{border-color:var(--amber);background:var(--amber-soft);color:var(--amber-deep);}
+.text-btn.using-active{border-color:var(--using-deep);background:var(--using-soft);color:var(--using-deep);}
+.text-btn.danger:active{color:var(--danger);border-color:var(--danger);}
+
+.add-entry-btn{
+  width:100%;padding:12px;background:none;border:none;border-top:1px solid var(--line);
+  color:var(--green-deep);font-weight:600;font-size:13.5px;cursor:pointer;font-family:'Inter',sans-serif;
+}
+.add-entry-btn:active{background:var(--green-soft);}
+
+.toast{
+  position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:#1F2A1D;color:#fff;padding:9px 16px;border-radius:20px;font-size:12.5px;
+  opacity:0;transition:opacity .2s ease, transform .2s ease;pointer-events:none;z-index:50;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.modal-add-btn{background:var(--green);color:#fff;border:none;border-radius:10px;padding:0 20px;font-weight:600;font-size:22px;cursor:pointer;}
+.modal-add-btn:active{background:var(--green-deep);}
+
+/* Colored store tag pills */
+.store-pill{
+  display:inline-flex;align-items:center;padding:1px 8px;border-radius:20px;
+  font-weight:700;font-size:inherit;line-height:1.5;
+}
+.brand-pill{
+  display:inline-flex;align-items:center;padding:0px 7px;border-radius:20px;
+  font-weight:600;font-size:inherit;line-height:1.5;border:1.4px solid currentColor;background:transparent;
+}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+</head>
+<body class="dark">
+<div class="wrap">
+  <header>
+    <div class="title-row">
+      <h1>Shop<span class="dot">·</span>Ledger</h1>
+      <div class="icon-btns">
+        <button class="icon-btn" id="searchBtn" title="Find or add">⌕</button>
+        <button class="icon-btn" id="importBtn" title="Import">⬆</button>
+        <button class="icon-btn" id="sortBtn" title="Sort">↕</button>
+        <button class="icon-btn" id="gearBtn" title="Settings">⚙</button>
+      </div>
+    </div>
+    <div class="stats-line" id="statsLine">Your ledger is empty</div>
+
+    <div class="backup-banner" id="backupBanner">
+      <div class="bb-text">📦 Time for your monthly backup<small>Downloads a CSV + full JSON backup</small></div>
+      <button class="bb-download" id="backupBannerDownloadBtn">Download</button>
+      <button class="bb-dismiss" id="backupBannerDismissBtn">Not now</button>
+    </div>
+
+    <div class="panel" id="searchPanel">
+      <div class="search-row" style="margin-top:0;">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="searchInput" placeholder="Find an item, or type a new one to add…" autocomplete="off">
+        <button class="clear-search" id="clearSearch" style="display:none;">✕</button>
+      </div>
+      <div id="quickAddRow" style="display:none;margin-top:8px;">
+        <button class="text-btn" id="quickAddBtn" style="width:100%;text-align:center;padding:10px;background:var(--green);color:#fff;border:none;font-weight:600;"></button>
+      </div>
+    </div>
+
+    <div class="panel" id="importPanel">
+      <div class="settings-label" style="margin-bottom:6px;">Import from CSV<small>In Notion: ••• menu → Export → CSV. Upload the file directly, or open it and paste the contents below. One row per item/store — items with the same name are grouped automatically.</small></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <label class="text-btn" for="importFileInput" style="flex:1;text-align:center;padding:10px;cursor:pointer;">📂 Upload CSV file</label>
+        <input type="file" id="importFileInput" accept=".csv,text/csv" style="display:none;">
+      </div>
+      <textarea id="importText" placeholder="…or paste CSV text here&#10;Item,Store,Brand,Price,Qty,Unit,Notes,Origin&#10;Milk,Woolworths,Coles Full Cream,3.50,2,L,,Australia" style="width:100%;min-height:110px;font-family:'JetBrains Mono',monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--input-bg);color:var(--ink);resize:vertical;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="text-btn" id="importCsvBtn" style="flex:1;text-align:center;padding:10px;background:var(--green);color:#fff;border:none;font-weight:600;">Import rows</button>
+        <button class="text-btn" id="exportCsvBtn" style="flex:1;text-align:center;padding:10px;">⬇ Download CSV</button>
+      </div>
+      <div id="importResult" style="font-size:12px;color:var(--ink-soft);margin-top:8px;"></div>
+
+      <div class="settings-block" style="margin-top:4px;">
+        <div class="settings-label">Full backup (JSON)<small>An exact, complete copy of everything — items, settings, and your sync config if connected. Best for full restores; CSV above is better for editing in a spreadsheet.</small></div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <label class="text-btn" for="restoreFileInput" style="flex:1;text-align:center;padding:9px;cursor:pointer;">📂 Restore from JSON</label>
+          <input type="file" id="restoreFileInput" accept=".json,application/json" style="display:none;">
+          <button class="text-btn" id="backupJsonBtn" style="flex:1;text-align:center;padding:9px;">⬇ Download full backup</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="sortPanel">
+      <div class="sort-row">
+        <label>Sort by</label>
+        <select class="sort-select" id="sortPrimary"></select>
+      </div>
+      <div class="sort-row">
+        <label>Then by</label>
+        <select class="sort-select" id="sortSecondary"></select>
+      </div>
+      <div class="sort-row">
+        <label>Then by</label>
+        <select class="sort-select" id="sortTertiary"></select>
+      </div>
+    </div>
+
+    <div class="panel" id="settingsPanel">
+      <div class="settings-row">
+        <div class="settings-label">Dark mode<small>Easier on the eyes, especially at night</small></div>
+        <label class="theme-switch">
+          <input type="checkbox" id="darkModeToggle">
+          <span class="theme-switch-track"></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div class="settings-label">Woolworths monthly discount<small>e.g. member deal</small></div>
+        <input type="number" class="pct-input" id="woolMonthly" value="10" min="0" max="100" step="0.5">
+      </div>
+      <div class="settings-row">
+        <div class="settings-label">Gift card discount<small>e.g. bought at a discount</small></div>
+        <input type="number" class="pct-input" id="woolGiftcard" value="4" min="0" max="100" step="0.5">
+      </div>
+      <div class="settings-row">
+        <div class="settings-label" style="font-weight:700;">Combined effective discount</div>
+        <span class="pct-input" id="woolCombined" style="border:none;background:none;font-weight:700;">13.4%</span>
+      </div>
+      <div class="settings-block">
+        <div class="settings-row" style="padding-top:0;">
+          <div class="settings-label">Backup reminder<small>Nags you to download a backup once a month</small></div>
+          <label class="theme-switch">
+            <input type="checkbox" id="backupReminderToggle">
+            <span class="theme-switch-track"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <div class="settings-label">Remind me</div>
+          <select class="sort-select" id="backupReminderMode" style="max-width:150px;">
+            <option value="monthly">Monthly, on a day</option>
+            <option value="interval">Every few days</option>
+          </select>
+        </div>
+        <div class="settings-row" id="backupReminderDayRow">
+          <div class="settings-label">Day of month<small>Which day the reminder shows up</small></div>
+          <input type="number" class="pct-input" id="backupReminderDay" value="1" min="1" max="28" step="1">
+        </div>
+        <div class="settings-row" id="backupReminderIntervalRow" style="display:none;">
+          <div class="settings-label">Every<small>Days since your last backup</small></div>
+          <input type="number" class="pct-input" id="backupReminderIntervalDays" value="7" min="1" max="90" step="1">
+        </div>
+        <div class="settings-row">
+          <div class="settings-label" style="font-weight:400;">Last backup<small id="lastBackupLabel">Never</small></div>
+        </div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Your stores<small>Shows up as suggestions when typing a store</small></div>
+        <div class="chip-list" id="storeChips"></div>
+        <div class="chip-add">
+          <input type="text" id="newStoreChip" placeholder="Add a store, e.g. Harris Farm">
+          <button id="addStoreChip">+</button>
+        </div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Your brands<small>Grows automatically as you type new ones too</small></div>
+        <div class="chip-list" id="brandChips"></div>
+        <div class="chip-add">
+          <input type="text" id="newBrandChip" placeholder="Add a brand, e.g. Bulla">
+          <button id="addBrandChip">+</button>
+        </div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label">Shared list<small>Sync live between devices (e.g. with your partner). Needs a one-time free setup — ask me for the steps.</small></div>
+        <div id="syncStatus" style="font-size:12px;color:var(--ink-soft);margin:8px 0;">Not connected — this device only</div>
+        <textarea id="firebaseConfigInput" placeholder='Paste your Firebase config here, the whole { ... } object' style="width:100%;min-height:70px;font-family:'JetBrains Mono',monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--input-bg);color:var(--ink);resize:vertical;"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="text-btn" id="connectSyncBtn" style="flex:1;text-align:center;padding:9px;background:var(--green);color:#fff;border:none;font-weight:600;">Connect</button>
+          <button class="text-btn" id="disconnectSyncBtn" style="flex:1;text-align:center;padding:9px;">Disconnect</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="text-btn" id="showConfigBtn" style="flex:1;text-align:center;padding:9px;font-size:11px;">👁 Show config to copy</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="text-btn" id="forcePushBtn" style="flex:1;text-align:center;padding:9px;font-size:11px;">⬆ Push my list to shared</button>
+          <button class="text-btn" id="forcePullBtn" style="flex:1;text-align:center;padding:9px;font-size:11px;">⬇ Pull shared list here</button>
+        </div>
+      </div>
+      <div class="settings-block">
+        <div class="settings-label" style="color:var(--danger);">Danger zone<small>Permanently deletes every item on this device. Your master list of stores/brands and your discount settings are kept.</small></div>
+        <button class="text-btn" id="wipeAllBtn" style="width:100%;margin-top:8px;padding:9px;text-align:center;border-color:var(--danger);color:var(--danger);">🗑 Delete all items</button>
+      </div>
+    </div>
+    <datalist id="storeDatalist"></datalist>
+    <datalist id="brandDatalist"></datalist>
+  </header>
+
+  <div class="list" id="productList"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'shop-ledger-data';
+
+const DEFAULT_SETTINGS = {
+  woolMonthly: 10, woolGiftcard: 4,
+  stores: ['Woolworths','Coles','Aldi','IGA','Costco','Chemist Warehouse'],
+  brands: [],
+  sort: { primary:'none', secondary:'none', tertiary:'none' },
+  theme: 'dark',
+  backupReminderEnabled: true,
+  backupReminderMode: 'monthly', // 'monthly' (fixed day of month) or 'interval' (every N days)
+  backupReminderDay: 1,
+  backupReminderIntervalDays: 7,
+  lastBackupDate: null,      // ISO date (yyyy-mm-dd) of the last downloaded backup
+  backupDismissedDate: null  // ISO date the banner was last dismissed, to keep it quiet the rest of that day
+};
+
+let state = { products: [], settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) };
+let openCardId = null;
+let expandedEntries = new Set(); // session-only UI state, not persisted
+let focusedField = null; // {entryId, role}
+let searchQuery = '';
+
+const unitOptions = ['g','kg','ml','L','ea'];
+const unitMeta = {
+  g:  { family:'mass',   toBase: v=>v/1000, baseLabel:'kg' },
+  kg: { family:'mass',   toBase: v=>v,      baseLabel:'kg' },
+  ml: { family:'volume', toBase: v=>v/1000, baseLabel:'L'  },
+  L:  { family:'volume', toBase: v=>v,      baseLabel:'L'  },
+  ea: { family:'count',  toBase: v=>v,      baseLabel:'ea' }
+};
+
+const SORT_FIELDS = [
+  { value:'none', label:'None' },
+  { value:'name-asc', label:'Item name (A–Z)' },
+  { value:'name-desc', label:'Item name (Z–A)' },
+  { value:'store-asc', label:'Store (A–Z)' },
+  { value:'store-desc', label:'Store (Z–A)' },
+  { value:'unticked-first', label:'Not ticked first' },
+  { value:'ticked-first', label:'Ticked first' },
+  { value:'stale-first', label:'Longest since bought' },
+  { value:'restock-due', label:'Due to restock first' }
+];
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+function sanitizeNumericInput(raw){
+  let v = (raw||'').replace(',', '.').replace(/[^0-9.]/g, '');
+  const firstDot = v.indexOf('.');
+  if(firstDot !== -1){
+    v = v.slice(0, firstDot+1) + v.slice(firstDot+1).replace(/\./g, '');
+  }
+  return v;
+}
+
+function sortAlpha(list){
+  return [...list].sort((a,b)=>a.localeCompare(b, undefined, {sensitivity:'base'}));
+}
+
+function combinedDiscount(){
+  const m = Number(state.settings.woolMonthly)||0;
+  const g = Number(state.settings.woolGiftcard)||0;
+  return 1 - (1-m/100)*(1-g/100);
+}
+
+function computeUnitPrice(priceValue, entry){
+  const price = Number(priceValue);
+  const qty = Number(entry.qty);
+  if(!price || !qty) return null;
+  const meta = unitMeta[entry.unit] || unitMeta.ea;
+  const baseQty = meta.toBase(qty);
+  if(!baseQty) return null;
+  return { raw: price/baseQty, family: meta.family, baseLabel: meta.baseLabel };
+}
+
+function effectiveUnitPrice(entry){
+  const base = computeUnitPrice(entry.price, entry);
+  if(!base) return null;
+  const eff = entry.isWool ? base.raw*(1-combinedDiscount()) : base.raw;
+  return { raw: base.raw, eff, family: base.family, baseLabel: base.baseLabel };
+}
+
+function bestEntry(product){
+  const byFamily = {};
+  for(const e of product.entries){
+    const calc = effectiveUnitPrice(e);
+    if(!calc) continue;
+    if(!byFamily[calc.family] || calc.eff < byFamily[calc.family].eff){
+      byFamily[calc.family] = { entry:e, eff:calc.eff, baseLabel:calc.baseLabel };
+    }
+  }
+  const families = Object.keys(byFamily);
+  if(families.length===0) return null;
+  let headlineFamily = families[0], maxCount = -1;
+  for(const fam of families){
+    const count = product.entries.filter(e=>{
+      const meta = unitMeta[e.unit] || unitMeta.ea;
+      return meta.family===fam && effectiveUnitPrice(e);
+    }).length;
+    if(count>maxCount){ maxCount=count; headlineFamily=fam; }
+  }
+  return { byFamily, headline: byFamily[headlineFamily], familyCount: families.length };
+}
+
+function updateStatsLine(){
+  const el = document.getElementById('statsLine');
+  const total = state.products.length;
+  if(total===0){ el.textContent = 'Your ledger is empty'; return; }
+  const done = state.products.filter(p=>p.tick).length;
+  const dueCount = state.products.filter(p=>{
+    const s = getRestockStatus(p);
+    return s && s.state==='overdue';
+  }).length;
+  el.textContent = `${total} item${total===1?'':'s'} · ${done} done` + (dueCount>0 ? ` · 🔔 ${dueCount} to restock` : '');
+}
+
+// Deterministic color per store name, so the same store always gets the same tag color
+const STORE_PALETTE = [
+  { bg:'#DEEBDE', text:'#1F4A2A' }, // green
+  { bg:'#F3E4CF', text:'#8A5A12' }, // amber
+  { bg:'#DCE7F3', text:'#1E4B7A' }, // blue
+  { bg:'#EBDDF0', text:'#5C2A7A' }, // purple
+  { bg:'#DCEFEC', text:'#146B5F' }, // teal
+  { bg:'#F5DFE3', text:'#93304A' }, // rose
+  { bg:'#E5E3D6', text:'#5A5636' }, // olive
+  { bg:'#DEE3F3', text:'#33397A' }  // indigo
+];
+const STORE_PALETTE_DARK = [
+  { bg:'#1E3323', text:'#A0E8B0' }, // green
+  { bg:'#3D2E17', text:'#F4C982' }, // amber
+  { bg:'#1B2C3E', text:'#A3CBF2' }, // blue
+  { bg:'#2C2038', text:'#D8B0EC' }, // purple
+  { bg:'#153531', text:'#8FE0CC' }, // teal
+  { bg:'#3B1F26', text:'#F4AEC0' }, // rose
+  { bg:'#343320', text:'#D9D4A3' }, // olive
+  { bg:'#1D223E', text:'#B2B8F2' }  // indigo
+];
+function currentStorePalette(){
+  return document.body.classList.contains('dark') ? STORE_PALETTE_DARK : STORE_PALETTE;
+}
+function getStoreColor(name){
+  const s = (name||'').trim().toLowerCase();
+  if(!s) return { bg:'transparent', text:'inherit' };
+  let hash = 0;
+  for(let i=0;i<s.length;i++){ hash = (hash*31 + s.charCodeAt(i)) >>> 0; }
+  return currentStorePalette()[hash % STORE_PALETTE.length];
+}
+function storePill(name){
+  if(!name) return escapeHtml('—');
+  const c = getStoreColor(name);
+  return `<span class="store-pill" style="background:${c.bg};color:${c.text};">${escapeHtml(name)}</span>`;
+}
+
+function getBrandColor(name){
+  const s = (name||'').trim().toLowerCase();
+  if(!s) return { bg:'transparent', text:'inherit' };
+  let hash = 0;
+  // offset multiplier so brand colors land differently than store colors even for similar names
+  for(let i=0;i<s.length;i++){ hash = (hash*17 + s.charCodeAt(i) + 7) >>> 0; }
+  return currentStorePalette()[hash % STORE_PALETTE.length];
+}
+function brandPill(name){
+  if(!name) return '';
+  const c = getBrandColor(name);
+  return `<span class="brand-pill" style="color:${c.text};">${escapeHtml(name)}</span>`;
+}
+
+const COUNTRY_FLAGS = {
+  'australia':'🇦🇺','new zealand':'🇳🇿','canada':'🇨🇦','usa':'🇺🇸','united states':'🇺🇸',
+  'uk':'🇬🇧','united kingdom':'🇬🇧','india':'🇮🇳','china':'🇨🇳','italy':'🇮🇹','italia':'🇮🇹',
+  'thailand':'🇹🇭','vietnam':'🇻🇳','france':'🇫🇷','germany':'🇩🇪','japan':'🇯🇵','spain':'🇪🇸',
+  'mexico':'🇲🇽','netherlands':'🇳🇱','south korea':'🇰🇷','korea':'🇰🇷','indonesia':'🇮🇩',
+  'philippines':'🇵🇭','malaysia':'🇲🇾','sri lanka':'🇱🇰','pakistan':'🇵🇰','bangladesh':'🇧🇩',
+  'turkey':'🇹🇷','greece':'🇬🇷','egypt':'🇪🇬','south africa':'🇿🇦','brazil':'🇧🇷','argentina':'🇦🇷',
+  'chile':'🇨🇱','peru':'🇵🇪','ireland':'🇮🇪','poland':'🇵🇱','portugal':'🇵🇹','sweden':'🇸🇪',
+  'switzerland':'🇨🇭','belgium':'🇧🇪','denmark':'🇩🇰','norway':'🇳🇴','fiji':'🇫🇯','israel':'🇮🇱'
+};
+const COUNTRY_CODES = {
+  'australia':'AUS','new zealand':'NZ','canada':'CAN','usa':'USA','united states':'USA',
+  'uk':'UK','united kingdom':'UK','india':'IND','china':'CHN','italy':'ITA','italia':'ITA',
+  'thailand':'THA','vietnam':'VN','france':'FRA','germany':'GER','japan':'JPN','spain':'ESP',
+  'mexico':'MEX','netherlands':'NED','south korea':'KOR','korea':'KOR','indonesia':'IDN',
+  'philippines':'PHI','malaysia':'MAS','sri lanka':'SL','pakistan':'PAK','bangladesh':'BAN',
+  'turkey':'TUR','greece':'GRE','egypt':'EGY','south africa':'RSA','brazil':'BRA','argentina':'ARG',
+  'chile':'CHI','peru':'PER','ireland':'IRL','poland':'POL','portugal':'POR','sweden':'SWE',
+  'switzerland':'SUI','belgium':'BEL','denmark':'DEN','norway':'NOR','fiji':'FIJ','israel':'ISR'
+};
+function countryFlag(origin){
+  const key = (origin||'').trim().toLowerCase();
+  return COUNTRY_FLAGS[key] || '🌍';
+}
+function countryCode(origin){
+  const key = (origin||'').trim().toLowerCase();
+  if(COUNTRY_CODES[key]) return COUNTRY_CODES[key];
+  return (origin||'').trim().slice(0,3).toUpperCase();
+}
+function countryTag(origin){
+  if(!origin) return '';
+  return `${countryFlag(origin)} ${escapeHtml(countryCode(origin))}`;
+}
+
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function relativeDateText(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00');
+  if(isNaN(d.getTime())) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diffDays = Math.round((today - d) / 86400000);
+  if(diffDays === 0) return 'Today';
+  if(diffDays === 1) return 'Yesterday';
+  if(diffDays > 1 && diffDays < 30) return diffDays + ' days ago';
+  if(diffDays < 0) return d.toLocaleDateString(undefined,{day:'numeric',month:'short'}); // future date, just show it plainly
+  return d.toLocaleDateString(undefined,{day:'numeric',month:'short'});
+}
+
+// How a product's restock reminder stands right now, based on lastBoughtDate + repurchaseDays.
+// Returns null if no period is set or it's never been bought (nothing to compare against).
+function getRestockStatus(product){
+  if(!product.repurchaseDays || !product.lastBoughtDate) return null;
+  const bought = new Date(product.lastBoughtDate + 'T00:00:00');
+  if(isNaN(bought.getTime())) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const daysSince = Math.round((today - bought) / 86400000);
+  const daysRemaining = product.repurchaseDays - daysSince;
+  if(daysRemaining <= 0){
+    const overdueBy = Math.abs(daysRemaining);
+    return { state:'overdue', daysRemaining, text: overdueBy===0 ? 'Due today' : `Overdue by ${overdueBy} day${overdueBy===1?'':'s'}` };
+  }
+  if(daysRemaining <= 2){
+    return { state:'due-soon', daysRemaining, text: daysRemaining===1 ? 'Due tomorrow' : `Due in ${daysRemaining} days` };
+  }
+  return { state:'ok', daysRemaining, text: `Next check in ${daysRemaining} days` };
+}
+
+function fmt(n){
+  if(n===null||n===undefined||isNaN(n)) return '—';
+  return '$'+n.toFixed(2);
+}
+
+function qualityEmoji(q){
+  return q==='good' ? '👍' : q==='ok' ? '😐' : q==='bad' ? '👎' : '';
+}
+
+function priceTypeBadge(entry){
+  if(!entry || (!entry.price && !entry.qty)) return ''; // no price entered yet — nothing to label
+  if(entry.onSpecial) return `<span class="mini-badge special">🏷️ Special</span>`;
+  if(entry.isWool) return `<span class="mini-badge wool">% Wooly disc.</span>`;
+  return `<span class="mini-badge normal">Reg. price</span>`;
+}
+
+// Shows the actual shelf prices you'd compare in-store — original total → special total →
+// Woolworths-discounted total — plus one clean unit price (per kg/L/ea) based on whichever
+// of those is lowest, for comparing across different pack sizes/stores.
+function getPriceTrail(entry){
+  const calc = effectiveUnitPrice(entry);
+  const price = Number(entry.price);
+  if(!calc || !price) return null;
+
+  const regularPrice = entry.onSpecial && entry.regularPrice ? Number(entry.regularPrice) : null;
+  const struckValues = [];
+  if(regularPrice) struckValues.push(fmt(regularPrice));       // full original shelf price, before the special
+  if(entry.isWool) struckValues.push(fmt(price));               // shelf price before the Woolworths member discount
+
+  const finalTotal = entry.isWool ? price * (1 - combinedDiscount()) : price;
+  return {
+    struckValues,
+    finalText: fmt(finalTotal),
+    unitText: `${fmt(calc.eff)}/${escapeHtml(calc.baseLabel)}`
+  };
+}
+function priceTrailBlockHTML(entry){
+  const trail = getPriceTrail(entry);
+  if(!trail) return `<span style="font-size:11px;color:var(--ink-faint);">—</span>`;
+  const struck = trail.struckValues.map(v=>`<span class="price-step">${v}</span>`).join('');
+  return `${struck}<span class="price-final">${trail.finalText}</span><span class="price-unit-sub">${trail.unitText}</span>`;
+}
+function priceTrailInlineHTML(entry){
+  const trail = getPriceTrail(entry);
+  if(!trail) return `<span class="best-price">no price yet</span>`;
+  const struck = trail.struckValues.map(v=>`<span style="text-decoration:line-through;color:var(--ink-faint);font-weight:500;">${v}</span>`).join(' ');
+  return (struck ? struck + ' ' : '') + `<span class="best-price">${trail.finalText}</span> <span style="font-size:10.5px;color:var(--ink-faint);">(${trail.unitText})</span>`;
+}
+
+function productMatchesSearch(product, q){
+  if(!q) return true;
+  q = q.toLowerCase();
+  if(product.name.toLowerCase().includes(q)) return true;
+  if((product.notes||'').toLowerCase().includes(q)) return true;
+  return product.entries.some(e=>
+    (e.store||'').toLowerCase().includes(q) || (e.brand||'').toLowerCase().includes(q) ||
+    (e.origin||'').toLowerCase().includes(q) || (e.notes||'').toLowerCase().includes(q)
+  );
+}
+
+function storeOfProduct(product){
+  const preferred = product.entries.find(e=>e.preferred);
+  if(preferred && preferred.store) return preferred.store;
+  const info = bestEntry(product);
+  if(info && info.headline && info.headline.entry.store) return info.headline.entry.store;
+  return '';
+}
+
+function compareBy(key, a, b){
+  switch(key){
+    case 'name-asc': return a.name.localeCompare(b.name, undefined, {sensitivity:'base'});
+    case 'name-desc': return b.name.localeCompare(a.name, undefined, {sensitivity:'base'});
+    case 'store-asc': return storeOfProduct(a).localeCompare(storeOfProduct(b), undefined, {sensitivity:'base'});
+    case 'store-desc': return storeOfProduct(b).localeCompare(storeOfProduct(a), undefined, {sensitivity:'base'});
+    case 'ticked-first': return (a.tick===b.tick) ? 0 : (a.tick ? -1 : 1);
+    case 'unticked-first': return (a.tick===b.tick) ? 0 : (a.tick ? 1 : -1);
+    case 'stale-first': {
+      // items never bought are treated as "oldest" (most in need of restocking), sorted first
+      const da = a.lastBoughtDate ? new Date(a.lastBoughtDate).getTime() : -Infinity;
+      const db = b.lastBoughtDate ? new Date(b.lastBoughtDate).getTime() : -Infinity;
+      return da - db;
+    }
+    case 'restock-due': {
+      // items with no period set (nothing to compare) always sort to the end
+      const sa = getRestockStatus(a), sb = getRestockStatus(b);
+      if(!sa && !sb) return 0;
+      if(!sa) return 1;
+      if(!sb) return -1;
+      return sa.daysRemaining - sb.daysRemaining; // most overdue (most negative) first
+    }
+    default: return 0;
+  }
+}
+
+function sortProducts(list){
+  const keys = [state.settings.sort.primary, state.settings.sort.secondary, state.settings.sort.tertiary]
+    .filter(k=>k && k!=='none');
+  if(keys.length===0) return list;
+  return [...list].sort((a,b)=>{
+    for(const k of keys){
+      const r = compareBy(k,a,b);
+      if(r!==0) return r;
+    }
+    return 0;
+  });
+}
+
+// Custom suggestion dropdown (more reliable across mobile browsers than native <datalist>)
+function attachSuggestions(inputEl, getOptions, onPick){
+  const box = document.createElement('div');
+  box.className = 'suggest-box';
+  inputEl.parentElement.appendChild(box);
+
+  function highlight(text, q){
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    if(i===-1) return escapeHtml(text);
+    return escapeHtml(text.slice(0,i)) + '<span class="match">' + escapeHtml(text.slice(i,i+q.length)) + '</span>' + escapeHtml(text.slice(i+q.length));
+  }
+
+  function show(){
+    const q = inputEl.value.trim();
+    const options = getOptions();
+    const matches = q
+      ? options.filter(v=> v.toLowerCase().includes(q.toLowerCase()) && v.toLowerCase()!==q.toLowerCase())
+      : options;
+    if(matches.length===0){ box.style.display='none'; box.innerHTML=''; return; }
+    box.innerHTML = matches.slice(0,7).map(v=>
+      `<div class="suggest-item" data-val="${escapeAttr(v)}">${q ? highlight(v,q) : escapeHtml(v)}</div>`
+    ).join('');
+    box.style.display='block';
+    box.querySelectorAll('.suggest-item').forEach(item=>{
+      item.addEventListener('mousedown', e=>{ e.preventDefault(); });
+      item.addEventListener('click', ()=>{
+        inputEl.value = item.dataset.val;
+        box.style.display='none';
+        onPick(item.dataset.val);
+      });
+    });
+  }
+
+  inputEl.addEventListener('focus', show);
+  inputEl.addEventListener('input', show);
+  inputEl.addEventListener('blur', ()=> setTimeout(()=>{ box.style.display='none'; }, 150));
+}
+
+// Storage that works both inside Claude (window.storage) and in a plain
+// browser like GitHub Pages (falls back to localStorage automatically).
+// This matters for offline use too: localStorage needs no network at all
+// once the page has loaded, so a self-hosted copy keeps working with no signal.
+const hasClaudeStorage = typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function';
+
+async function storageGet(key){
+  if(hasClaudeStorage) return window.storage.get(key, false);
+  try{
+    const v = localStorage.getItem(key);
+    return v!==null ? { value: v } : null;
+  }catch(e){ return null; }
+}
+async function storageSet(key, value){
+  if(hasClaudeStorage) return window.storage.set(key, value, false);
+  try{
+    localStorage.setItem(key, value);
+    return { value };
+  }catch(e){ return null; }
+}
+
+function applyStateShape(parsed){
+  state.products = parsed.products || [];
+  state.settings = Object.assign({}, DEFAULT_SETTINGS, parsed.settings || {});
+  if(!Array.isArray(state.settings.stores)) state.settings.stores = [...DEFAULT_SETTINGS.stores];
+  if(!Array.isArray(state.settings.brands)) state.settings.brands = [];
+  state.settings.sort = Object.assign({}, DEFAULT_SETTINGS.sort, state.settings.sort || {});
+  // migrate old data: ensure product.tick and new entry fields exist
+  state.products.forEach(p=>{
+    if(typeof p.tick !== 'boolean') p.tick = false;
+    if(typeof p.notes !== 'string') p.notes = '';
+    if(typeof p.lastBoughtDate !== 'string') p.lastBoughtDate = null;
+    if(typeof p.repurchaseDays !== 'number') p.repurchaseDays = null;
+    (p.entries||[]).forEach(e=>{
+      if(typeof e.preferred !== 'boolean') e.preferred = false;
+      if(typeof e.usingNow !== 'boolean') e.usingNow = false;
+      if(typeof e.isWool !== 'boolean') e.isWool = false;
+      if(typeof e.onSpecial !== 'boolean') e.onSpecial = false;
+      if(typeof e.regularPrice !== 'string') e.regularPrice = e.regularPrice ? String(e.regularPrice) : '';
+      if(typeof e.quality !== 'string') e.quality = '';
+      if(typeof e.origin !== 'string') e.origin = '';
+    });
+  });
+}
+
+async function loadState(){
+  try{
+    const res = await storageGet(STORAGE_KEY);
+    if(res && res.value){
+      applyStateShape(JSON.parse(res.value));
+    }
+  }catch(e){ /* no existing data yet */ }
+
+  document.getElementById('woolMonthly').value = state.settings.woolMonthly;
+  document.getElementById('woolGiftcard').value = state.settings.woolGiftcard;
+  applyTheme(state.settings.theme === 'dark');
+  document.getElementById('darkModeToggle').checked = state.settings.theme === 'dark';
+  document.getElementById('backupReminderToggle').checked = !!state.settings.backupReminderEnabled;
+  document.getElementById('backupReminderMode').value = state.settings.backupReminderMode || 'monthly';
+  document.getElementById('backupReminderDay').value = state.settings.backupReminderDay || 1;
+  document.getElementById('backupReminderIntervalDays').value = state.settings.backupReminderIntervalDays || 7;
+  updateBackupReminderModeUI();
+  buildSortSelects();
+  updateCombinedLabel();
+  updateBackupBanner();
+  render();
+  loadSyncConfig();
+}
+
+function applyTheme(isDark){
+  document.body.classList.toggle('dark', isDark);
+}
+
+async function saveState(){
+  try{
+    const ok = await storageSet(STORAGE_KEY, JSON.stringify(state));
+    if(!ok) showToast('Could not save — try again');
+  }catch(e){ showToast('Could not save — try again'); }
+  if(syncing && dbRef){
+    try{ dbRef.set(state); }catch(e){ /* will retry on next save */ }
+  }
+}
+
+// --- Live sync between devices (e.g. you + your partner) via Firebase Realtime Database.
+// This only works once the page is hosted on a real domain (like GitHub Pages) — the
+// gstatic.com script it needs is blocked inside Claude's own sandboxed preview.
+const SYNC_CONFIG_KEY = 'shop-ledger-sync-config';
+let firebaseApp = null, dbRef = null, syncing = false, applyingRemote = false;
+
+// Baked directly into the file so every device auto-connects on first load, with no
+// copy-pasting required — this matters because browser storage (where a manually
+// pasted config would otherwise live) can get wiped by iOS Safari, private/in-app
+// browser views, etc. Firebase config values are meant to be public in client code
+// (real security comes from database rules + auth, not from hiding this).
+const EMBEDDED_SYNC_CONFIG = {
+  apiKey: "AIzaSyDaDOad0qElHFkiDkXVEK4ZEzvthvik2v4",
+  authDomain: "shopping-list-38520.firebaseapp.com",
+  databaseURL: "https://shopping-list-38520-default-rtdb.firebaseio.com",
+  projectId: "shopping-list-38520",
+  storageBucket: "shopping-list-38520.firebasestorage.app",
+  messagingSenderId: "585784927483",
+  appId: "1:585784927483:web:6955c1313d76deba887c5e"
+};
+
+function updateSyncStatus(msg, isError){
+  const el = document.getElementById('syncStatus');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--danger)' : (syncing ? 'var(--green-deep)' : 'var(--ink-soft)');
+}
+
+// Firebase Realtime Database doesn't reliably keep JS arrays as arrays — nested
+// lists like product.entries can come back as plain objects ({"0":..,"1":..})
+// after a round-trip. This converts any such "array-like" object back into a
+// real array, recursively, so .filter/.map/.forEach etc keep working.
+function normalizeFirebaseArrays(obj){
+  if(Array.isArray(obj)) return obj.map(normalizeFirebaseArrays);
+  if(obj && typeof obj === 'object'){
+    const keys = Object.keys(obj);
+    const isArrayLike = keys.length > 0 && keys.every((k,i)=> k === String(i));
+    if(isArrayLike) return keys.map(k => normalizeFirebaseArrays(obj[k]));
+    const result = {};
+    for(const k of keys) result[k] = normalizeFirebaseArrays(obj[k]);
+    return result;
+  }
+  return obj;
+}
+
+function connectSync(config, isInitialLoad){
+  if(typeof firebase === 'undefined'){
+    updateSyncStatus('Sync library didn\'t load — this only works once uploaded to GitHub, not in this chat preview.', true);
+    return;
+  }
+  try{
+    if(firebaseApp){ try{ firebaseApp.delete(); }catch(e){} }
+    firebaseApp = firebase.initializeApp(config, 'shopSync_' + Date.now());
+    updateSyncStatus('Connecting…', false);
+
+    firebaseApp.auth().signInAnonymously().then(()=>{
+      dbRef = firebaseApp.database().ref('shopping-list-data');
+      dbRef.on('value', (snapshot)=>{
+        try{
+          const remote = normalizeFirebaseArrays(snapshot.val());
+          if(!remote) return; // nothing remote yet — keep showing what we have
+          if(JSON.stringify(remote) === JSON.stringify(state)) return; // already in sync
+
+          const candidate = remote;
+          if(!Array.isArray(candidate.products)){
+            console.warn('Remote data looked malformed, ignoring this update.', candidate);
+            return; // don't let a bad shape wipe out a good local list
+          }
+          candidate.products.forEach(p=>{ if(!Array.isArray(p.entries)) p.entries = []; });
+          if(!candidate.settings) candidate.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+
+          applyingRemote = true;
+          state = candidate;
+          render();
+          storageSet(STORAGE_KEY, JSON.stringify(state)); // persist locally too, without pushing back up
+          applyingRemote = false;
+        }catch(e){
+          console.warn('Skipped a malformed sync update:', e);
+        }
+      }, (err)=>{
+        updateSyncStatus('Connection error — check your Firebase config and database rules.', true);
+      });
+      syncing = true;
+      updateSyncStatus('Connected — syncing live with anyone using this same link.', false);
+      storageSet(SYNC_CONFIG_KEY, JSON.stringify(config));
+      if(!isInitialLoad){
+        // Only seed Firebase with our local list if nothing real is there yet.
+        // (Previously this always pushed local data on connect, which could
+        // silently overwrite a partner's already-synced list with an empty one.)
+        dbRef.once('value').then((snapshot)=>{
+          const remote = normalizeFirebaseArrays(snapshot.val());
+          const remoteHasData = remote && Array.isArray(remote.products) && remote.products.length > 0;
+          if(!remoteHasData){
+            dbRef.set(state);
+          }
+          // else: leave it alone — the .on('value') listener above will adopt the real data
+        }).catch(()=>{ /* the .on listener above will still try to sync normally */ });
+      }
+    }).catch((err)=>{
+      if(err && err.code === 'auth/operation-not-allowed'){
+        updateSyncStatus('Anonymous sign-in isn\'t turned on yet in your Firebase project — enable it under Authentication → Sign-in method → Anonymous, then tap Connect again.', true);
+      } else if(err && err.code === 'auth/configuration-not-found'){
+        updateSyncStatus('Authentication isn\'t set up in this Firebase project yet — open Authentication in the Firebase console once first, then tap Connect again.', true);
+      } else {
+        updateSyncStatus('Could not sign in to sync — double check your config was pasted correctly.', true);
+      }
+    });
+  }catch(e){
+    updateSyncStatus('Could not connect — make sure you pasted the full config object correctly.', true);
+  }
+}
+
+function disconnectSync(){
+  if(dbRef){ try{ dbRef.off(); }catch(e){} }
+  syncing = false;
+  dbRef = null;
+  updateSyncStatus('Not connected — this device only', false);
+  storageSet(SYNC_CONFIG_KEY, 'DISABLED'); // remembers "I chose to disconnect" so it doesn't silently reconnect
+}
+
+async function loadSyncConfig(){
+  try{
+    const res = await storageGet(SYNC_CONFIG_KEY);
+    if(res && res.value === 'DISABLED'){
+      const input = document.getElementById('firebaseConfigInput');
+      if(input && EMBEDDED_SYNC_CONFIG) input.value = JSON.stringify(EMBEDDED_SYNC_CONFIG, null, 2);
+      return; // respect an explicit disconnect — don't auto-reconnect
+    }
+    if(res && res.value){
+      const cfg = JSON.parse(res.value);
+      const input = document.getElementById('firebaseConfigInput');
+      if(input) input.value = JSON.stringify(cfg, null, 2);
+      connectSync(cfg, true);
+      return;
+    }
+  }catch(e){ /* nothing saved yet — fall through to the embedded default below */ }
+
+  if(EMBEDDED_SYNC_CONFIG){
+    const input = document.getElementById('firebaseConfigInput');
+    if(input) input.value = JSON.stringify(EMBEDDED_SYNC_CONFIG, null, 2);
+    connectSync(EMBEDDED_SYNC_CONFIG, true);
+  }
+}
+
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function updateCombinedLabel(){
+  document.getElementById('woolCombined').textContent = (combinedDiscount()*100).toFixed(1)+'%';
+}
+
+function buildSortSelects(){
+  ['sortPrimary','sortSecondary','sortTertiary'].forEach((id)=>{
+    const sel = document.getElementById(id);
+    sel.innerHTML = SORT_FIELDS.map(f=>`<option value="${f.value}">${f.label}</option>`).join('');
+  });
+  document.getElementById('sortPrimary').value = state.settings.sort.primary;
+  document.getElementById('sortSecondary').value = state.settings.sort.secondary;
+  document.getElementById('sortTertiary').value = state.settings.sort.tertiary;
+}
+
+function removeFromMasterList(type, value){
+  state.settings[type] = state.settings[type].filter(v=>v!==value);
+  saveState(); render();
+}
+
+function addToMasterList(type, rawValue){
+  const value = (rawValue||'').trim();
+  if(!value) return;
+  const list = state.settings[type];
+  const exists = list.some(v=>v.toLowerCase()===value.toLowerCase());
+  if(!exists){ list.push(value); saveState(); }
+}
+
+function renderDatalists(){
+  document.getElementById('storeDatalist').innerHTML =
+    sortAlpha(state.settings.stores).map(s=>`<option value="${escapeAttr(s)}">`).join('');
+  document.getElementById('brandDatalist').innerHTML =
+    sortAlpha(state.settings.brands).map(b=>`<option value="${escapeAttr(b)}">`).join('');
+}
+
+function renderChips(){
+  const storeChips = document.getElementById('storeChips');
+  storeChips.innerHTML = sortAlpha(state.settings.stores).map(s=>
+    `<span class="chip">${escapeHtml(s)}<button data-val="${escapeAttr(s)}">✕</button></span>`
+  ).join('') || `<span style="font-size:12px;color:var(--ink-faint);">None yet</span>`;
+  storeChips.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=> removeFromMasterList('stores', b.dataset.val));
+  });
+
+  const brandChips = document.getElementById('brandChips');
+  brandChips.innerHTML = sortAlpha(state.settings.brands).map(b=>
+    `<span class="chip">${escapeHtml(b)}<button data-val="${escapeAttr(b)}">✕</button></span>`
+  ).join('') || `<span style="font-size:12px;color:var(--ink-faint);">None yet — they'll appear here as you type them</span>`;
+  brandChips.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=> removeFromMasterList('brands', b.dataset.val));
+  });
+}
+
+function restoreFocus(){
+  if(!focusedField) return;
+  const el = document.querySelector(`[data-entry-id="${focusedField.entryId}"][data-role="${focusedField.role}"]`);
+  if(el){
+    el.focus();
+    if(typeof el.selectionStart === 'number'){
+      const len = el.value.length;
+      try{ el.setSelectionRange(len, len); }catch(e){}
+    }
+  }
+}
+
+function escapeHtml(str){
+  return String(str??'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escapeAttr(str){ return escapeHtml(str); }
+
+function render(){
+  const list = document.getElementById('productList');
+  const previousHTML = list.innerHTML;
+  try{
+    renderInner();
+  }catch(e){
+    console.error('Render failed, keeping previous view on screen:', e);
+    list.innerHTML = previousHTML; // never leave the screen blank from a rendering bug
+    showToast('Something went wrong showing an update — your data is safe, but try refreshing.');
+  }
+}
+
+function renderInner(){
+  renderChips();
+  renderDatalists();
+  updateStatsLine();
+
+  const list = document.getElementById('productList');
+  list.innerHTML = '';
+
+  if(state.products.length===0){
+    list.innerHTML = `<div class="empty-state">
+      <div class="big">🧺</div>
+      <p><strong>Your ledger is empty</strong></p>
+      <p>Tap the + button below to add your first item.</p>
+    </div>`;
+    restoreFocus();
+    return;
+  }
+
+  let visibleProducts = state.products.filter(p=>productMatchesSearch(p, searchQuery));
+  visibleProducts = sortProducts(visibleProducts);
+
+  if(visibleProducts.length===0){
+    list.innerHTML = `<div class="empty-state">
+      <div class="big">🔎</div>
+      <p><strong>No matches for "${escapeHtml(searchQuery)}"</strong></p>
+      <p>Try a different item, store, or brand name.</p>
+    </div>`;
+    restoreFocus();
+    return;
+  }
+
+  for(const product of visibleProducts){
+    const card = document.createElement('div');
+    const isOpen = openCardId===product.id;
+    const restockStatus = getRestockStatus(product);
+    card.className = 'card' + (isOpen ? ' open' : '') + (product.tick ? ' done' : '') + (restockStatus && restockStatus.state==='overdue' ? ' needs-restock' : '');
+
+    const bestInfo = bestEntry(product);
+    const headline = bestInfo ? bestInfo.headline : null;
+    const preferredEntry = product.entries.find(e=>e.preferred) || null;
+    const preferredCalc = preferredEntry ? effectiveUnitPrice(preferredEntry) : null;
+    const preferredIsHeadlineBest = !!(preferredEntry && headline && headline.entry.id===preferredEntry.id);
+    const usingEntry = product.entries.find(e=>e.usingNow) || null;
+    const usingIsPreferred = !!(usingEntry && preferredEntry && usingEntry.id===preferredEntry.id);
+    const usingIsHeadlineBest = !!(usingEntry && headline && headline.entry.id===usingEntry.id);
+
+    const head = document.createElement('div');
+    head.className = 'card-head';
+    head.innerHTML = `
+      <div class="tick ${product.tick?'checked':''}" data-role="productTick">${product.tick?'✓':''}</div>
+      <div class="card-name-wrap">
+        <input class="card-name" value="${escapeAttr(product.name)}" data-id="${product.id}" />
+        ${ usingEntry ? `
+          <div class="best-line">
+            <span class="using-tag">📦 Using</span>
+            <span>${storePill(usingEntry.store)}${usingEntry.brand ? ' · '+brandPill(usingEntry.brand):''}</span>
+            ${ usingEntry.origin ? `<span>${countryTag(usingEntry.origin)}</span>` : '' }
+            ${ usingEntry.quality ? `<span>${qualityEmoji(usingEntry.quality)}</span>` : '' }
+            ${ priceTypeBadge(usingEntry) }
+            ${ priceTrailInlineHTML(usingEntry) }
+          </div>` : '' }
+        ${ preferredEntry && !usingIsPreferred ? `
+          <div class="best-line" style="${usingEntry ? 'margin-top:2px;' : ''}">
+            <span class="pref-tag">📌 Preferred</span>
+            <span>${storePill(preferredEntry.store)}${preferredEntry.brand ? ' · '+brandPill(preferredEntry.brand):''}</span>
+            ${ preferredEntry.origin ? `<span>${countryTag(preferredEntry.origin)}</span>` : '' }
+            ${ preferredEntry.quality ? `<span>${qualityEmoji(preferredEntry.quality)}</span>` : '' }
+            ${ priceTypeBadge(preferredEntry) }
+            ${ priceTrailInlineHTML(preferredEntry) }
+          </div>` : '' }
+        ${ headline && !preferredIsHeadlineBest && !usingIsHeadlineBest ? `
+          <div class="best-line" style="${(preferredEntry||usingEntry) ? 'margin-top:2px;' : ''}">
+            <span class="best-tag">Best</span>
+            <span>${storePill(headline.entry.store)}${headline.entry.brand ? ' · '+brandPill(headline.entry.brand):''}</span>
+            ${ headline.entry.origin ? `<span>${countryTag(headline.entry.origin)}</span>` : '' }
+            ${ headline.entry.quality ? `<span>${qualityEmoji(headline.entry.quality)}</span>` : '' }
+            ${ priceTypeBadge(headline.entry) }
+            ${ priceTrailInlineHTML(headline.entry) }
+            ${ bestInfo.familyCount>1 ? `<span style="color:var(--ink-faint);">· different units below compared separately</span>` : '' }
+          </div>` : '' }
+        ${ !headline && !preferredEntry && !usingEntry ? `<div class="no-entries">No prices added yet</div>` : '' }
+        ${ product.notes ? `<div class="no-entries" style="color:var(--ink-soft);font-style:normal;">📝 ${escapeHtml(product.notes)}</div>` : '' }
+        ${ product.lastBoughtDate ? `<div class="no-entries" style="color:var(--ink-faint);font-style:normal;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span>🗓 Bought ${relativeDateText(product.lastBoughtDate)}</span>
+              ${ restockStatus && restockStatus.state!=='ok' ? `<span class="restock-status ${restockStatus.state}">${restockStatus.state==='overdue'?'🔔 ':''}${restockStatus.text}</span>` : '' }
+            </div>` : '' }
+      </div>
+      <button class="del-product" data-id="${product.id}" title="Delete item">✕</button>
+      <span class="chev">▶</span>
+    `;
+    head.querySelector('[data-role="productTick"]').addEventListener('click', (ev)=>{
+      ev.stopPropagation();
+      product.tick = !product.tick;
+      if(product.tick){
+        product.lastBoughtDate = todayISO(); // stamp today; unticking doesn't clear it — it's purchase history
+      }
+      saveState(); render();
+    });
+    head.addEventListener('click', (ev)=>{
+      if(ev.target.closest('.del-product') || ev.target.closest('.card-name') || ev.target.closest('[data-role="productTick"]')) return;
+      openCardId = openCardId===product.id ? null : product.id;
+      render();
+    });
+    head.querySelector('.del-product').addEventListener('click', (ev)=>{
+      ev.stopPropagation();
+      state.products = state.products.filter(p=>p.id!==product.id);
+      saveState(); render();
+    });
+    const nameInput = head.querySelector('.card-name');
+    nameInput.addEventListener('click', e=>e.stopPropagation());
+    nameInput.addEventListener('change', e=>{
+      product.name = e.target.value;
+      saveState();
+    });
+
+    card.appendChild(head);
+
+    const entriesWrap = document.createElement('div');
+    entriesWrap.className = 'entries';
+
+    const noteWrap = document.createElement('div');
+    noteWrap.className = 'item-note-wrap';
+    noteWrap.innerHTML = `<input type="text" class="item-note-input" placeholder="📝 Add a note about this item (e.g. buy every 2 weeks)" value="${escapeAttr(product.notes||'')}">`;
+    noteWrap.querySelector('input').addEventListener('change', e=>{
+      product.notes = e.target.value;
+      saveState(); render();
+    });
+    entriesWrap.appendChild(noteWrap);
+
+    const dateWrap = document.createElement('div');
+    dateWrap.className = 'item-date-wrap';
+    dateWrap.innerHTML = `
+      <span class="item-date-label">🗓 Last bought</span>
+      <input type="date" class="item-date-input" value="${escapeAttr(product.lastBoughtDate||'')}">
+      ${ product.lastBoughtDate ? `<span class="item-date-relative">${relativeDateText(product.lastBoughtDate)}</span>` : '' }
+    `;
+    dateWrap.querySelector('input').addEventListener('change', e=>{
+      product.lastBoughtDate = e.target.value || null;
+      saveState(); render();
+    });
+    entriesWrap.appendChild(dateWrap);
+
+    const repeatWrap = document.createElement('div');
+    repeatWrap.className = 'item-date-wrap';
+    repeatWrap.innerHTML = `
+      <span class="item-date-label">🔁 Buy again every</span>
+      <input type="number" min="1" step="1" class="item-repeat-input" placeholder="days" value="${product.repurchaseDays||''}">
+      <span class="item-date-label">days</span>
+      ${ restockStatus ? `<span class="restock-status ${restockStatus.state}">${restockStatus.text}</span>` : '' }
+    `;
+    repeatWrap.querySelector('input').addEventListener('change', e=>{
+      const val = parseInt(e.target.value, 10);
+      product.repurchaseDays = (val && val>0) ? val : null;
+      saveState(); render();
+    });
+    entriesWrap.appendChild(repeatWrap);
+
+    if(product.entries.length>0){
+      const allExpanded = product.entries.every(e=>expandedEntries.has(e.id));
+      const toolbar = document.createElement('div');
+      toolbar.className = 'entries-toolbar';
+      const toggleAllBtn = document.createElement('button');
+      toggleAllBtn.className = 'expand-all-btn';
+      toggleAllBtn.textContent = allExpanded ? 'Collapse all' : 'Expand all';
+      toggleAllBtn.addEventListener('click', ()=>{
+        if(allExpanded){ product.entries.forEach(e=>expandedEntries.delete(e.id)); }
+        else { product.entries.forEach(e=>expandedEntries.add(e.id)); }
+        render();
+      });
+      toolbar.appendChild(toggleAllBtn);
+      entriesWrap.appendChild(toolbar);
+    }
+
+    for(const entry of product.entries){
+      entriesWrap.appendChild(renderEntry(product, entry, bestInfo));
+    }
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-entry-btn';
+    addBtn.textContent = '+ Add store / price';
+    addBtn.addEventListener('click', ()=>{
+      const newEntry = { id: uid(), store:'', brand:'', price:'', qty:'', unit:'g', notes:'',
+        isWool:false, preferred:false, usingNow:false, onSpecial:false, regularPrice:'', quality:'', origin:'' };
+      product.entries.push(newEntry);
+      expandedEntries.add(newEntry.id);
+      saveState(); render();
+    });
+    entriesWrap.appendChild(addBtn);
+
+    card.appendChild(entriesWrap);
+    list.appendChild(card);
+  }
+
+  restoreFocus();
+}
+
+function renderEntry(product, entry, bestInfo){
+  const wrap = document.createElement('div');
+  wrap.className = 'entry-wrap';
+
+  const calc = effectiveUnitPrice(entry);
+  const familyBest = calc && bestInfo ? bestInfo.byFamily[calc.family] : null;
+  const isBest = !!(calc && familyBest && familyBest.entry.id===entry.id);
+  const isWoolworths = (entry.store||'').trim().toLowerCase()==='woolworths';
+  const isExpanded = expandedEntries.has(entry.id);
+  const regularCalc = entry.onSpecial && entry.regularPrice ? computeUnitPrice(entry.regularPrice, entry) : null;
+
+  // --- Compact row ---
+  const ec = document.createElement('div');
+  ec.className = 'ec';
+  ec.innerHTML = `
+    <div class="ec-tap" data-role="toggleExpand">
+      <div class="ec-line1">
+        ${ entry.store || entry.brand
+          ? `<span>${storePill(entry.store)}${entry.brand ? ' · '+brandPill(entry.brand):''}</span>`
+          : `<span class="placeholder">Tap to add details</span>` }
+        ${ entry.origin ? `<span title="${escapeAttr(entry.origin)}">${countryTag(entry.origin)}</span>` : '' }
+        ${ entry.quality ? `<span>${qualityEmoji(entry.quality)}</span>` : '' }
+      </div>
+      <div class="ec-line2">
+        ${ priceTypeBadge(entry) }
+        ${ entry.usingNow ? `<span class="mini-badge using">📦 Using</span>` : '' }
+        ${ entry.preferred ? `<span class="mini-badge pref">📌 Preferred</span>` : '' }
+        ${ isBest ? `<span class="mini-badge best">★ Best</span>` : '' }
+      </div>
+    </div>
+    <div class="ec-price">
+      ${ priceTrailBlockHTML(entry) }
+    </div>
+    <div class="ec-actions">
+      <button class="mini-icon-btn ${entry.usingNow?'active':''}" data-role="usingMini" title="Currently using">📦</button>
+      <button class="mini-icon-btn ${entry.preferred?'active':''}" data-role="preferredMini" title="Preferred">📌</button>
+      <button class="mini-icon-btn" data-role="deleteMini" title="Remove row">✕</button>
+    </div>
+  `;
+  ec.querySelector('[data-role="toggleExpand"]').addEventListener('click', ()=>{
+    if(isExpanded) expandedEntries.delete(entry.id); else expandedEntries.add(entry.id);
+    render();
+  });
+  ec.querySelector('[data-role="usingMini"]').addEventListener('click', ()=>{
+    const turningOn = !entry.usingNow;
+    product.entries.forEach(e=> e.usingNow = false);
+    entry.usingNow = turningOn;
+    saveState(); render();
+  });
+  ec.querySelector('[data-role="preferredMini"]').addEventListener('click', ()=>{
+    const turningOn = !entry.preferred;
+    product.entries.forEach(e=> e.preferred = false);
+    entry.preferred = turningOn;
+    saveState(); render();
+  });
+  ec.querySelector('[data-role="deleteMini"]').addEventListener('click', ()=>{
+    product.entries = product.entries.filter(x=>x.id!==entry.id);
+    expandedEntries.delete(entry.id);
+    saveState(); render();
+  });
+  wrap.appendChild(ec);
+
+  if(!isExpanded) return wrap;
+
+  // --- Expanded form ---
+  const form = document.createElement('div');
+  form.className = 'entry-form';
+  const unitSelectOptions = unitOptions.map(u=>`<option value="${u}" ${entry.unit===u?'selected':''}>${u}</option>`).join('');
+
+  form.innerHTML = `
+    <div class="entry-fields">
+      <div class="field">
+        <label>Store</label>
+        <input type="text" data-role="store" data-entry-id="${entry.id}" value="${escapeAttr(entry.store)}" placeholder="e.g. Woolworths">
+      </div>
+      <div class="field">
+        <label>Brand</label>
+        <input type="text" data-role="brand" data-entry-id="${entry.id}" value="${escapeAttr(entry.brand)}" placeholder="e.g. Bulla">
+      </div>
+      <div class="field num">
+        <label>Price ($)</label>
+        <input type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" data-role="price" data-entry-id="${entry.id}" value="${escapeAttr(entry.price)}" placeholder="0.00">
+      </div>
+      <div class="field num">
+        <label>Qty</label>
+        <input type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" data-role="qty" data-entry-id="${entry.id}" value="${escapeAttr(entry.qty)}" placeholder="e.g. 500">
+      </div>
+      <div class="field">
+        <label>Unit</label>
+        <select data-role="unit">${unitSelectOptions}</select>
+      </div>
+      <div class="field">
+        <label>Origin</label>
+        <input type="text" data-role="origin" data-entry-id="${entry.id}" value="${escapeAttr(entry.origin)}" placeholder="e.g. Australia">
+      </div>
+      <div class="field full">
+        <label>Notes</label>
+        <input type="text" data-role="notes" value="${escapeAttr(entry.notes)}" placeholder="e.g. shelf near dairy">
+      </div>
+    </div>
+
+    ${ isWoolworths ? `
+      <label class="toggle-row">
+        <input type="checkbox" data-role="woolToggle" ${entry.isWool?'checked':''}>
+        Apply my Woolworths discount to this row
+      </label>` : '' }
+
+    <label class="toggle-row">
+      <input type="checkbox" data-role="onSpecialToggle" ${entry.onSpecial?'checked':''}>
+      This price is a special / discount (not the regular price)
+    </label>
+    ${ entry.onSpecial ? `
+      <div class="entry-fields" style="margin-top:6px;">
+        <div class="field num">
+          <label>Regular price ($)</label>
+          <input type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" data-role="regularPrice" data-entry-id="${entry.id}" value="${escapeAttr(entry.regularPrice)}" placeholder="0.00">
+        </div>
+      </div>` : '' }
+
+    <div class="quality-row">
+      <label>Quality</label>
+      <div class="quality-buttons">
+        <button data-q="good" class="${entry.quality==='good'?'active':''}" title="Good">👍</button>
+        <button data-q="ok" class="${entry.quality==='ok'?'active':''}" title="Okay">😐</button>
+        <button data-q="bad" class="${entry.quality==='bad'?'active':''}" title="Not great">👎</button>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <div class="left-btns">
+        <button class="text-btn ${entry.usingNow?'using-active':''}" data-role="usingBtn">📦 ${entry.usingNow?'Using now':'Mark as using'}</button>
+        <button class="text-btn ${entry.preferred?'pref-active':''}" data-role="preferredBtn">📌 ${entry.preferred?'Preferred':'Mark preferred'}</button>
+        <button class="text-btn danger" data-role="deleteBtn">✕ Remove</button>
+      </div>
+      <button class="text-btn" data-role="collapseBtn">▴ Collapse</button>
+    </div>
+  `;
+
+  const storeInput = form.querySelector('[data-role="store"]');
+  storeInput.addEventListener('input', e=>{
+    focusedField = { entryId: entry.id, role: 'store' };
+    entry.store = e.target.value;
+    entry.isWool = (e.target.value||'').trim().toLowerCase()==='woolworths';
+    saveState();
+    render();
+  });
+  storeInput.addEventListener('blur', e=>{
+    if(focusedField && focusedField.entryId===entry.id && focusedField.role==='store') focusedField = null;
+    addToMasterList('stores', e.target.value);
+    renderChips(); renderDatalists();
+  });
+  attachSuggestions(storeInput, ()=>sortAlpha(state.settings.stores), (val)=>{
+    entry.store = val;
+    entry.isWool = val.trim().toLowerCase()==='woolworths';
+    addToMasterList('stores', val);
+    saveState(); render();
+  });
+
+  const brandInput = form.querySelector('[data-role="brand"]');
+  brandInput.addEventListener('input', e=>{
+    focusedField = { entryId: entry.id, role: 'brand' };
+    entry.brand = e.target.value;
+    saveState();
+  });
+  brandInput.addEventListener('blur', e=>{
+    if(focusedField && focusedField.entryId===entry.id && focusedField.role==='brand') focusedField = null;
+    addToMasterList('brands', e.target.value);
+    renderChips(); renderDatalists();
+  });
+  attachSuggestions(brandInput, ()=>sortAlpha(state.settings.brands), (val)=>{
+    entry.brand = val;
+    addToMasterList('brands', val);
+    saveState(); render();
+  });
+
+  form.querySelector('[data-role="price"]').addEventListener('input', e=>{
+    focusedField = { entryId: entry.id, role: 'price' };
+    entry.price = sanitizeNumericInput(e.target.value);
+    saveState(); render();
+  });
+  form.querySelector('[data-role="qty"]').addEventListener('input', e=>{
+    focusedField = { entryId: entry.id, role: 'qty' };
+    entry.qty = sanitizeNumericInput(e.target.value);
+    saveState(); render();
+  });
+  form.querySelector('[data-role="unit"]').addEventListener('change', e=>{ entry.unit = e.target.value; saveState(); render(); });
+  form.querySelector('[data-role="notes"]').addEventListener('change', e=>{ entry.notes = e.target.value; saveState(); });
+
+  const originInput = form.querySelector('[data-role="origin"]');
+  originInput.addEventListener('input', e=>{
+    focusedField = { entryId: entry.id, role: 'origin' };
+    entry.origin = e.target.value;
+    saveState();
+  });
+  originInput.addEventListener('blur', ()=>{
+    if(focusedField && focusedField.entryId===entry.id && focusedField.role==='origin') focusedField = null;
+    render();
+  });
+
+  const woolToggle = form.querySelector('[data-role="woolToggle"]');
+  if(woolToggle){
+    woolToggle.addEventListener('change', e=>{ entry.isWool = e.target.checked; saveState(); render(); });
+  }
+
+  form.querySelector('[data-role="onSpecialToggle"]').addEventListener('change', e=>{
+    entry.onSpecial = e.target.checked;
+    saveState(); render();
+  });
+  const regularPriceInput = form.querySelector('[data-role="regularPrice"]');
+  if(regularPriceInput){
+    regularPriceInput.addEventListener('input', e=>{
+      focusedField = { entryId: entry.id, role: 'regularPrice' };
+      entry.regularPrice = sanitizeNumericInput(e.target.value);
+      saveState(); render();
+    });
+  }
+
+  form.querySelectorAll('.quality-buttons button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      entry.quality = entry.quality===btn.dataset.q ? '' : btn.dataset.q;
+      saveState(); render();
+    });
+  });
+
+  form.querySelector('[data-role="usingBtn"]').addEventListener('click', ()=>{
+    const turningOn = !entry.usingNow;
+    product.entries.forEach(e=> e.usingNow = false);
+    entry.usingNow = turningOn;
+    saveState(); render();
+  });
+  form.querySelector('[data-role="preferredBtn"]').addEventListener('click', ()=>{
+    const turningOn = !entry.preferred;
+    product.entries.forEach(e=> e.preferred = false);
+    entry.preferred = turningOn;
+    saveState(); render();
+  });
+  form.querySelector('[data-role="deleteBtn"]').addEventListener('click', ()=>{
+    product.entries = product.entries.filter(x=>x.id!==entry.id);
+    expandedEntries.delete(entry.id);
+    saveState(); render();
+  });
+  form.querySelector('[data-role="collapseBtn"]').addEventListener('click', ()=>{
+    expandedEntries.delete(entry.id);
+    render();
+  });
+
+  wrap.appendChild(form);
+  return wrap;
+}
+
+function closeAllPanels(){
+  ['searchPanel','importPanel','sortPanel','settingsPanel'].forEach(id=>document.getElementById(id).classList.remove('open'));
+  ['searchBtn','importBtn','sortBtn','gearBtn'].forEach(id=>document.getElementById(id).classList.remove('is-active'));
+}
+function togglePanel(panelId, btnId, onOpen){
+  const isOpen = document.getElementById(panelId).classList.contains('open');
+  closeAllPanels();
+  if(!isOpen){
+    document.getElementById(panelId).classList.add('open');
+    document.getElementById(btnId).classList.add('is-active');
+    if(onOpen) onOpen();
+  }
+}
+document.getElementById('searchBtn').addEventListener('click', ()=> togglePanel('searchPanel','searchBtn', ()=>{
+  setTimeout(()=> document.getElementById('searchInput').focus(), 50);
+}));
+document.getElementById('importBtn').addEventListener('click', ()=> togglePanel('importPanel','importBtn'));
+document.getElementById('gearBtn').addEventListener('click', ()=> togglePanel('settingsPanel','gearBtn'));
+document.getElementById('sortBtn').addEventListener('click', ()=> togglePanel('sortPanel','sortBtn'));
+
+function addProduct(name){
+  const p = { id: uid(), name, tick:false, notes:'', lastBoughtDate:null, repurchaseDays:null, entries: [] };
+  state.products.unshift(p);
+  openCardId = p.id;
+  saveState();
+  searchQuery = '';
+  searchInput.value = '';
+  clearSearchBtn.style.display = 'none';
+  quickAddRow.style.display = 'none';
+  render();
+  document.getElementById('productList').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+const searchInput = document.getElementById('searchInput');
+const clearSearchBtn = document.getElementById('clearSearch');
+const quickAddRow = document.getElementById('quickAddRow');
+const quickAddBtn = document.getElementById('quickAddBtn');
+
+function updateQuickAdd(){
+  const q = searchQuery.trim();
+  if(!q){ quickAddRow.style.display = 'none'; return; }
+  const exists = state.products.some(p=>p.name.toLowerCase()===q.toLowerCase());
+  if(exists){ quickAddRow.style.display = 'none'; return; }
+  quickAddBtn.textContent = `+ Add "${q}" as a new item`;
+  quickAddRow.style.display = 'block';
+}
+
+searchInput.addEventListener('input', e=>{
+  searchQuery = e.target.value;
+  clearSearchBtn.style.display = searchQuery ? 'block' : 'none';
+  updateQuickAdd();
+  render();
+});
+searchInput.addEventListener('keydown', e=>{
+  if(e.key==='Enter' && quickAddRow.style.display!=='none'){
+    addProduct(searchQuery.trim());
+  }
+});
+quickAddBtn.addEventListener('click', ()=>{
+  addProduct(searchQuery.trim());
+});
+clearSearchBtn.addEventListener('click', ()=>{
+  searchQuery = '';
+  searchInput.value = '';
+  clearSearchBtn.style.display = 'none';
+  quickAddRow.style.display = 'none';
+  render();
+  searchInput.focus();
+});
+
+// --- CSV import ---
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i], next = text[i+1];
+    if(inQuotes){
+      if(c==='"' && next==='"'){ field+='"'; i++; }
+      else if(c==='"'){ inQuotes=false; }
+      else field += c;
+    } else {
+      if(c==='"') inQuotes = true;
+      else if(c===','){ row.push(field); field=''; }
+      else if(c==='\n' || c==='\r'){
+        if(c==='\r' && next==='\n') i++;
+        row.push(field); field='';
+        if(row.some(f=>f.trim()!=='')) rows.push(row);
+        row = [];
+      } else field += c;
+    }
+  }
+  if(field.length>0 || row.length>0){ row.push(field); if(row.some(f=>f.trim()!=='')) rows.push(row); }
+  return rows;
+}
+
+function findCol(headers, ...aliases){
+  const idx = headers.findIndex(h=> aliases.some(a=> h===a || h.includes(a)));
+  return idx;
+}
+
+function toBool(v){
+  const s = (v||'').toString().trim().toLowerCase();
+  return s==='true' || s==='yes' || s==='1' || s==='✓' || s==='checked' || s==='x';
+}
+
+function normalizeUnit(v){
+  const s = (v||'').toString().trim().toLowerCase();
+  if(s==='kg') return 'kg';
+  if(s==='g' || s==='gram' || s==='grams') return 'g';
+  if(s==='ml') return 'ml';
+  if(s==='l' || s==='litre' || s==='liter' || s==='litres') return 'L';
+  return 'ea';
+}
+
+function importFromCSV(text){
+  const rows = parseCSV(text.trim());
+  if(rows.length<2) return { added:0, itemsTouched:0, error:'No data rows found — make sure the first line has column headers.' };
+  const headers = rows[0].map(h=>h.trim().toLowerCase());
+
+  const colName = findCol(headers,'item','product','name');
+  const colTick = findCol(headers,'tick','bought','done');
+  const colStore = findCol(headers,'store');
+  const colBrand = findCol(headers,'brand');
+  const colPrice = findCol(headers,'price');
+  const colQty = findCol(headers,'qty','quantity','amount');
+  const colUnit = findCol(headers,'unit');
+  const colNotes = findCol(headers,'notes','note');
+  const colOrigin = findCol(headers,'origin','country');
+  const colQuality = findCol(headers,'quality');
+  const colSpecial = findCol(headers,'special','discount','onspecial');
+  const colRegular = findCol(headers,'regular','rrp','normal price','regularprice');
+  const colPreferred = findCol(headers,'preferred','favourite','favorite');
+  const colLastBought = findCol(headers,'lastbought','last bought','bought date','purchasedate');
+  const colRepurchaseDays = findCol(headers,'repurchasedays','repurchase days','buy again every');
+  const colUsing = findCol(headers,'usingnow','using now','using');
+
+  if(colName===-1) return { added:0, itemsTouched:0, error:'Could not find an Item/Product/Name column.' };
+
+  let itemsTouched = new Set();
+  let rowsAdded = 0;
+
+  for(let i=1;i<rows.length;i++){
+    const r = rows[i];
+    const name = (r[colName]||'').trim();
+    if(!name) continue;
+
+    let product = state.products.find(p=>p.name.toLowerCase()===name.toLowerCase());
+    if(!product){
+      product = { id: uid(), name, tick:false, notes:'', lastBoughtDate:null, repurchaseDays:null, entries: [] };
+      state.products.push(product);
+    }
+    if(colTick!==-1 && toBool(r[colTick])) product.tick = true;
+    if(colLastBought!==-1 && r[colLastBought]){
+      const parsed = new Date(r[colLastBought]);
+      if(!isNaN(parsed.getTime())) product.lastBoughtDate = parsed.toISOString().slice(0,10);
+    }
+    if(colRepurchaseDays!==-1 && r[colRepurchaseDays]){
+      const days = parseInt(r[colRepurchaseDays], 10);
+      if(days > 0) product.repurchaseDays = days;
+    }
+    itemsTouched.add(product.id);
+
+    const hasEntryData = (colStore!==-1 && r[colStore]) || (colBrand!==-1 && r[colBrand]) || (colPrice!==-1 && r[colPrice]);
+    if(!hasEntryData) continue;
+
+    const entry = {
+      id: uid(),
+      store: colStore!==-1 ? (r[colStore]||'').trim() : '',
+      brand: colBrand!==-1 ? (r[colBrand]||'').trim() : '',
+      price: colPrice!==-1 ? sanitizeNumericInput(r[colPrice]) : '',
+      qty: colQty!==-1 ? sanitizeNumericInput(r[colQty]) : '',
+      unit: colUnit!==-1 ? normalizeUnit(r[colUnit]) : 'g',
+      notes: colNotes!==-1 ? (r[colNotes]||'').trim() : '',
+      origin: colOrigin!==-1 ? (r[colOrigin]||'').trim() : '',
+      quality: '',
+      onSpecial: colSpecial!==-1 ? toBool(r[colSpecial]) : false,
+      regularPrice: colRegular!==-1 ? sanitizeNumericInput(r[colRegular]) : '',
+      preferred: colPreferred!==-1 ? toBool(r[colPreferred]) : false,
+      usingNow: colUsing!==-1 ? toBool(r[colUsing]) : false,
+      isWool: false
+    };
+    if(colQuality!==-1){
+      const q = (r[colQuality]||'').toString().trim().toLowerCase();
+      if(q.includes('good')||q==='👍') entry.quality='good';
+      else if(q.includes('bad')||q.includes('poor')||q==='👎') entry.quality='bad';
+      else if(q) entry.quality='ok';
+    }
+    entry.isWool = entry.store.toLowerCase()==='woolworths';
+    if(entry.preferred) product.entries.forEach(e=>e.preferred=false);
+    if(entry.usingNow) product.entries.forEach(e=>e.usingNow=false);
+
+    product.entries.push(entry);
+    if(entry.store) addToMasterList('stores', entry.store);
+    if(entry.brand) addToMasterList('brands', entry.brand);
+    rowsAdded++;
+  }
+
+  saveState();
+  return { added: rowsAdded, itemsTouched: itemsTouched.size, error: null };
+}
+
+document.getElementById('importFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById('importText').value = reader.result;
+    document.getElementById('importResult').style.color = 'var(--ink-soft)';
+    document.getElementById('importResult').textContent = `Loaded "${file.name}" — tap "Import rows" to bring it in.`;
+  };
+  reader.onerror = () => {
+    document.getElementById('importResult').style.color = 'var(--danger)';
+    document.getElementById('importResult').textContent = 'Could not read that file — try pasting the contents instead.';
+  };
+  reader.readAsText(file);
+  e.target.value = ''; // allow re-selecting the same file later
+});
+
+document.getElementById('importCsvBtn').addEventListener('click', ()=>{
+  const text = document.getElementById('importText').value;
+  const resultEl = document.getElementById('importResult');
+  if(!text.trim()){ resultEl.textContent = 'Paste some CSV data first.'; return; }
+  const result = importFromCSV(text);
+  if(result.error){
+    resultEl.style.color = 'var(--danger)';
+    resultEl.textContent = result.error;
+  } else {
+    resultEl.style.color = 'var(--green-deep)';
+    resultEl.textContent = `Imported ${result.added} row(s) into ${result.itemsTouched} item(s).`;
+    document.getElementById('importText').value = '';
+    render();
+  }
+});
+
+function csvEscape(v){
+  const s = (v===undefined||v===null) ? '' : String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+function exportToCSV(){
+  const fields = ['Item','Tick','LastBought','RepurchaseDays','Store','Brand','Price','Qty','Unit','Notes','Origin','Quality','Special','RegularPrice','Preferred','UsingNow'];
+  const lines = [fields.join(',')];
+  for(const p of state.products){
+    if(p.entries.length===0){
+      lines.push([p.name, p.tick?'Yes':'No', p.lastBoughtDate||'', p.repurchaseDays||'', '','','','','',p.notes||'','','','','','',''].map(csvEscape).join(','));
+      continue;
+    }
+    for(const e of p.entries){
+      lines.push([
+        p.name, p.tick?'Yes':'No', p.lastBoughtDate||'', p.repurchaseDays||'', e.store, e.brand, e.price, e.qty, e.unit,
+        e.notes, e.origin, e.quality, e.onSpecial?'Yes':'', e.regularPrice, e.preferred?'Yes':'', e.usingNow?'Yes':''
+      ].map(csvEscape).join(','));
+    }
+  }
+  return lines.join('\n');
+}
+// Generic "create a blob and trigger a download" helper, shared by CSV and JSON backups.
+function triggerFileDownload(content, filename, mimeType){
+  try{
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=> URL.revokeObjectURL(url), 2000);
+    return true;
+  }catch(e){ return false; }
+}
+
+function downloadCSVFile(){
+  const csv = exportToCSV();
+  const filename = `shop-ledger-${todayISO()}.csv`;
+  const ok = triggerFileDownload(csv, filename, 'text/csv;charset=utf-8;');
+  return { ok, filename, csv };
+}
+
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+  const textarea = document.getElementById('importText');
+  const resultEl = document.getElementById('importResult');
+  const res = downloadCSVFile();
+  textarea.value = res.csv;
+  if(res.ok){
+    resultEl.style.color = 'var(--green-deep)';
+    resultEl.textContent = `Downloading ${res.filename} — on iPhone, open it from Files and choose "Open in Numbers" (or share → Numbers). If nothing happened, the text is also selected below to copy manually.`;
+  }else{
+    resultEl.style.color = 'var(--ink-soft)';
+    resultEl.textContent = `Download didn't start — but your list is selected below, copy it manually instead.`;
+  }
+  textarea.focus();
+  textarea.select();
+  try{ textarea.setSelectionRange(0, textarea.value.length); }catch(e){}
+});
+
+function exportToJSON(){
+  const backup = {
+    app: 'shop-ledger',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    state: state,
+    syncConfig: null
+  };
+  // include the sync config too, so restoring this file also restores the ability
+  // to reconnect sync without having to go back to the Firebase console
+  const cfgInput = document.getElementById('firebaseConfigInput');
+  if(cfgInput && cfgInput.value.trim()){
+    try{ backup.syncConfig = parseFirebaseConfig(cfgInput.value.trim()); }catch(e){ /* skip if unreadable */ }
+  }
+  return JSON.stringify(backup, null, 2);
+}
+
+function downloadJSONFile(){
+  const json = exportToJSON();
+  const filename = `shop-ledger-backup-${todayISO()}.json`;
+  const ok = triggerFileDownload(json, filename, 'application/json;charset=utf-8;');
+  return { ok, filename };
+}
+
+// Records that a backup happened "now" — shared bookkeeping so the reminder
+// banner and last-backup label stay accurate no matter which button was used.
+function recordBackupNow(){
+  state.settings.lastBackupDate = todayISO();
+  saveState();
+  updateBackupBanner();
+}
+
+// Used by the Settings "Download full backup" button — JSON only.
+function downloadJSONBackup(){
+  const res = downloadJSONFile();
+  if(res.ok) recordBackupNow();
+  return res;
+}
+
+document.getElementById('backupJsonBtn').addEventListener('click', ()=>{
+  const resultEl = document.getElementById('importResult');
+  const res = downloadJSONBackup();
+  if(res.ok){
+    resultEl.style.color = 'var(--green-deep)';
+    resultEl.textContent = `Downloading ${res.filename} — a complete backup of everything, including your sync config if connected. Keep it somewhere safe (Files app, email to yourself, etc.).`;
+  }else{
+    resultEl.style.color = 'var(--danger)';
+    resultEl.textContent = 'Could not create the backup file — try again.';
+  }
+});
+
+// Used by the reminder banner — downloads BOTH the CSV and the full JSON backup.
+// A small stagger between the two helps mobile browsers treat them as separate,
+// intentional downloads rather than blocking the second one.
+function downloadBothBackups(){
+  const csvRes = downloadCSVFile();
+  setTimeout(()=>{
+    const jsonRes = downloadJSONFile();
+    if(csvRes.ok || jsonRes.ok) recordBackupNow();
+  }, 400);
+  return csvRes;
+}
+
+// --- Backup reminder banner ---
+function formatLastBackupLabel(){
+  const d = state.settings.lastBackupDate;
+  if(!d) return 'Never';
+  const rel = relativeDateText(d);
+  return rel || d;
+}
+function shouldShowBackupBanner(){
+  if(!state.settings.backupReminderEnabled) return false;
+  const todayStr = todayISO();
+  if(state.settings.lastBackupDate === todayStr) return false;
+  if(state.settings.backupDismissedDate === todayStr) return false;
+
+  if(state.settings.backupReminderMode === 'interval'){
+    if(!state.settings.lastBackupDate) return true; // never backed up yet
+    const last = new Date(state.settings.lastBackupDate + 'T00:00:00');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const daysSince = Math.round((today - last) / 86400000);
+    return daysSince >= (state.settings.backupReminderIntervalDays || 7);
+  }
+
+  // monthly mode: fixed day of month
+  const today = new Date();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
+  const targetDay = Math.min(state.settings.backupReminderDay || 1, daysInMonth);
+  return today.getDate() === targetDay;
+}
+function updateBackupReminderModeUI(){
+  const isInterval = state.settings.backupReminderMode === 'interval';
+  document.getElementById('backupReminderDayRow').style.display = isInterval ? 'none' : 'flex';
+  document.getElementById('backupReminderIntervalRow').style.display = isInterval ? 'flex' : 'none';
+}
+function updateBackupBanner(){
+  const banner = document.getElementById('backupBanner');
+  if(!banner) return;
+  banner.classList.toggle('show', shouldShowBackupBanner());
+  const lbl = document.getElementById('lastBackupLabel');
+  if(lbl) lbl.textContent = formatLastBackupLabel();
+}
+document.getElementById('backupBannerDownloadBtn').addEventListener('click', ()=>{
+  const res = downloadBothBackups();
+  showToast(res.ok ? 'Backups downloaded ✓ (CSV + JSON)' : 'Could not create the backup file — try again.');
+});
+document.getElementById('backupBannerDismissBtn').addEventListener('click', ()=>{
+  state.settings.backupDismissedDate = todayISO();
+  saveState();
+  updateBackupBanner();
+});
+document.getElementById('backupReminderToggle').addEventListener('change', e=>{
+  state.settings.backupReminderEnabled = e.target.checked;
+  saveState(); updateBackupBanner();
+});
+document.getElementById('backupReminderDay').addEventListener('input', e=>{
+  let v = parseInt(e.target.value, 10);
+  if(isNaN(v)) v = 1;
+  v = Math.max(1, Math.min(28, v));
+  state.settings.backupReminderDay = v;
+  saveState(); updateBackupBanner();
+});
+document.getElementById('backupReminderMode').addEventListener('change', e=>{
+  state.settings.backupReminderMode = e.target.value;
+  updateBackupReminderModeUI();
+  saveState(); updateBackupBanner();
+});
+document.getElementById('backupReminderIntervalDays').addEventListener('input', e=>{
+  let v = parseInt(e.target.value, 10);
+  if(isNaN(v)) v = 7;
+  v = Math.max(1, Math.min(90, v));
+  state.settings.backupReminderIntervalDays = v;
+  saveState(); updateBackupBanner();
+});
+
+document.getElementById('restoreFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const resultEl = document.getElementById('importResult');
+  const reader = new FileReader();
+  reader.onload = () => {
+    let parsed;
+    try{ parsed = JSON.parse(reader.result); }
+    catch(err){ resultEl.style.color='var(--danger)'; resultEl.textContent = 'That file isn\'t valid JSON — make sure you picked the right backup file.'; return; }
+
+    if(!parsed || !parsed.state || !Array.isArray(parsed.state.products)){
+      resultEl.style.color='var(--danger)';
+      resultEl.textContent = 'That doesn\'t look like a Shop·Ledger backup file.';
+      return;
+    }
+
+    let msg = `Restore this backup from ${parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleString() : 'an unknown date'}? This will completely replace everything currently on this device (${state.products.length} item(s) now → ${parsed.state.products.length} item(s) in the backup).`;
+    if(syncing){
+      msg += '\n\n⚠️ You are connected to a shared list — restoring will also overwrite it for anyone else connected.';
+    }
+    if(!confirm(msg)) { e.target.value=''; return; }
+
+    applyStateShape(parsed.state);
+    saveState();
+    render();
+
+    if(parsed.syncConfig){
+      const cfgInput = document.getElementById('firebaseConfigInput');
+      if(cfgInput) cfgInput.value = JSON.stringify(parsed.syncConfig, null, 2);
+    }
+
+    resultEl.style.color = 'var(--green-deep)';
+    resultEl.textContent = `Restored ${state.products.length} item(s) from backup.` + (parsed.syncConfig ? ' Your sync config was also filled in below — tap Connect if you want to reconnect.' : '');
+    e.target.value = '';
+  };
+  reader.onerror = () => {
+    resultEl.style.color = 'var(--danger)';
+    resultEl.textContent = 'Could not read that file — try again.';
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('darkModeToggle').addEventListener('change', e=>{
+  state.settings.theme = e.target.checked ? 'dark' : 'light';
+  applyTheme(e.target.checked);
+  saveState(); render();
+});
+
+document.getElementById('woolMonthly').addEventListener('input', e=>{
+  state.settings.woolMonthly = e.target.value; updateCombinedLabel(); saveState(); render();
+});
+document.getElementById('woolGiftcard').addEventListener('input', e=>{
+  state.settings.woolGiftcard = e.target.value; updateCombinedLabel(); saveState(); render();
+});
+
+document.getElementById('addStoreChip').addEventListener('click', ()=>{
+  const input = document.getElementById('newStoreChip');
+  addToMasterList('stores', input.value);
+  input.value = '';
+  render();
+});
+document.getElementById('newStoreChip').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('addStoreChip').click();
+});
+document.getElementById('addBrandChip').addEventListener('click', ()=>{
+  const input = document.getElementById('newBrandChip');
+  addToMasterList('brands', input.value);
+  input.value = '';
+  render();
+});
+document.getElementById('newBrandChip').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('addBrandChip').click();
+});
+
+['sortPrimary','sortSecondary','sortTertiary'].forEach((id, idx)=>{
+  const key = ['primary','secondary','tertiary'][idx];
+  document.getElementById(id).addEventListener('change', e=>{
+    state.settings.sort[key] = e.target.value;
+    saveState(); render();
+  });
+});
+
+function parseFirebaseConfig(raw){
+  // Firebase's console shows a JS object literal (unquoted keys like apiKey: "..."),
+  // which isn't valid strict JSON. Try JSON first, then fall back to evaluating it
+  // as a plain JS object literal (safe here — it's the user's own pasted config,
+  // evaluated locally in their own browser, not sent anywhere).
+  try{ return JSON.parse(raw); }catch(e){ /* fall through */ }
+  const objMatch = raw.match(/\{[\s\S]*\}/);
+  if(!objMatch) throw new Error('No object found');
+  return new Function('return (' + objMatch[0] + ')')();
+}
+
+document.getElementById('connectSyncBtn').addEventListener('click', ()=>{
+  try{
+    const raw = document.getElementById('firebaseConfigInput').value.trim();
+    const config = parseFirebaseConfig(raw);
+    if(!config || !config.databaseURL){
+      updateSyncStatus('That config is missing a databaseURL — make sure Realtime Database is enabled in Firebase and you copied the full object.', true);
+      return;
+    }
+    connectSync(config, false);
+  }catch(e){
+    updateSyncStatus('That doesn\'t look like valid config — paste the whole { ... } object from Firebase, unchanged.', true);
+  }
+});
+document.getElementById('disconnectSyncBtn').addEventListener('click', disconnectSync);
+
+document.getElementById('showConfigBtn').addEventListener('click', ()=>{
+  const input = document.getElementById('firebaseConfigInput');
+  if(!input.value.trim()){
+    updateSyncStatus('No config saved on this device yet — paste one in and Connect first.', true);
+    return;
+  }
+  input.focus();
+  input.select();
+  try{ input.setSelectionRange(0, input.value.length); }catch(e){}
+  updateSyncStatus('Your config is selected above — copy it now and send it to your wife\'s device.', false);
+});
+
+document.getElementById('forcePushBtn').addEventListener('click', ()=>{
+  if(!syncing || !dbRef){ updateSyncStatus('Connect first before pushing.', true); return; }
+  dbRef.set(state);
+  updateSyncStatus(`Pushed your ${state.products.length} item(s) to the shared list — anyone else connected will see it now.`, false);
+});
+document.getElementById('forcePullBtn').addEventListener('click', ()=>{
+  if(!syncing || !dbRef){ updateSyncStatus('Connect first before pulling.', true); return; }
+  dbRef.once('value').then((snapshot)=>{
+    const remote = normalizeFirebaseArrays(snapshot.val());
+    if(remote && Array.isArray(remote.products)){
+      state = remote;
+      if(!state.settings) state.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+      render();
+      storageSet(STORAGE_KEY, JSON.stringify(state));
+      updateSyncStatus(`Pulled ${state.products.length} item(s) from the shared list.`, false);
+    } else {
+      updateSyncStatus('Nothing usable found in the shared list yet.', true);
+    }
+  });
+});
+
+document.getElementById('wipeAllBtn').addEventListener('click', ()=>{
+  const count = state.products.length;
+  if(count===0){ showToast('There\'s nothing to delete — your list is already empty.'); return; }
+  let msg = `This will permanently delete all ${count} item(s). This cannot be undone.`;
+  if(syncing){
+    msg += '\n\n⚠️ You are connected to a shared list — this will also erase it for anyone else connected (e.g. your wife\'s device), the moment they next sync.';
+  }
+  msg += '\n\nMake sure you have a CSV backup first if you want to keep this data. Continue?';
+  if(!confirm(msg)) return;
+  state.products = [];
+  saveState(); // this also pushes the wipe to Firebase if connected, matching the warning above
+  render();
+  showToast('All items deleted.');
+});
+
+loadState();
+</script>
+</body>
+</html>
