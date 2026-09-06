@@ -381,17 +381,16 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
       <textarea id="importText" placeholder="…or paste CSV text here&#10;Item,Store,Brand,Price,Qty,Unit,Notes,Origin&#10;Milk,Woolworths,Coles Full Cream,3.50,2,L,,Australia" style="width:100%;min-height:110px;font-family:'JetBrains Mono',monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--input-bg);color:var(--ink);resize:vertical;"></textarea>
       <div style="display:flex;gap:8px;margin-top:8px;">
         <button class="text-btn" id="importCsvBtn" style="flex:1;text-align:center;padding:10px;background:var(--green);color:#fff;border:none;font-weight:600;">Import rows</button>
-        <button class="text-btn" id="exportCsvBtn" style="flex:1;text-align:center;padding:10px;">⬇ Download CSV</button>
       </div>
       <div id="importResult" style="font-size:12px;color:var(--ink-soft);margin-top:8px;"></div>
 
       <div class="settings-block" style="margin-top:4px;">
-        <div class="settings-label">Full backup (JSON)<small>An exact, complete copy of everything — items, settings, and your sync config if connected. Best for full restores; CSV above is better for editing in a spreadsheet.</small></div>
+        <div class="settings-label">Restore from backup<small>Replaces everything with a previously downloaded JSON backup — items, settings, and sync config if it was connected.</small></div>
         <div style="display:flex;gap:8px;margin-top:8px;">
           <label class="text-btn" for="restoreFileInput" style="flex:1;text-align:center;padding:9px;cursor:pointer;">📂 Restore from JSON</label>
           <input type="file" id="restoreFileInput" accept=".json,application/json" style="display:none;">
-          <button class="text-btn" id="backupJsonBtn" style="flex:1;text-align:center;padding:9px;">⬇ Download full backup</button>
         </div>
+        <div style="font-size:11.5px;color:var(--ink-faint);margin-top:8px;">Want to download a backup? Go to Settings → Backup reminder → "Download all backups".</div>
       </div>
     </div>
 
@@ -456,7 +455,7 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
         <div class="settings-row">
           <div class="settings-label" style="font-weight:400;">Last backup<small id="lastBackupLabel">Never</small></div>
         </div>
-        <button class="text-btn" id="testBackupBtn" style="width:100%;text-align:center;padding:10px;margin-top:4px;">⬇ Download all backups now (test)</button>
+        <button class="text-btn" id="testBackupBtn" style="width:100%;text-align:center;padding:10px;margin-top:4px;background:var(--green);color:#fff;border:none;font-weight:600;">⬇ Download all backups (JSON + CSV)</button>
       </div>
       <div class="settings-block">
         <div class="settings-label">Your stores<small>Shows up as suggestions when typing a store</small></div>
@@ -1927,23 +1926,6 @@ function downloadCSVFile(){
   return { ok, filename, csv };
 }
 
-document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
-  const textarea = document.getElementById('importText');
-  const resultEl = document.getElementById('importResult');
-  const res = downloadCSVFile();
-  textarea.value = res.csv;
-  if(res.ok){
-    resultEl.style.color = 'var(--green-deep)';
-    resultEl.textContent = `Downloading ${res.filename} — on iPhone, open it from Files and choose "Open in Numbers" (or share → Numbers). If nothing happened, the text is also selected below to copy manually.`;
-  }else{
-    resultEl.style.color = 'var(--ink-soft)';
-    resultEl.textContent = `Download didn't start — but your list is selected below, copy it manually instead.`;
-  }
-  textarea.focus();
-  textarea.select();
-  try{ textarea.setSelectionRange(0, textarea.value.length); }catch(e){}
-});
-
 function exportToJSON(){
   const backup = {
     app: 'shop-ledger',
@@ -1976,29 +1958,10 @@ function recordBackupNow(){
   updateBackupBanner();
 }
 
-// Used by the Settings "Download full backup" button — JSON only.
-function downloadJSONBackup(){
-  const res = downloadJSONFile();
-  if(res.ok) recordBackupNow();
-  return res;
-}
-
-document.getElementById('backupJsonBtn').addEventListener('click', ()=>{
-  const resultEl = document.getElementById('importResult');
-  const res = downloadJSONBackup();
-  if(res.ok){
-    resultEl.style.color = 'var(--green-deep)';
-    resultEl.textContent = `Downloading ${res.filename} — a complete backup of everything, including your sync config if connected. Keep it somewhere safe (Files app, email to yourself, etc.).`;
-  }else{
-    resultEl.style.color = 'var(--danger)';
-    resultEl.textContent = 'Could not create the backup file — try again.';
-  }
-});
-
-// Used by the reminder banner (and the manual "test" button in Settings) —
-// downloads BOTH the full JSON backup and the CSV, a couple seconds apart so
-// mobile browsers treat them as two separate, intentional downloads rather
-// than blocking the second one as a popup.
+// The only backup action left: downloads BOTH the full JSON backup and the CSV,
+// a couple seconds apart so mobile browsers treat them as two separate,
+// intentional downloads rather than blocking the second one as a popup.
+// Used by the reminder banner and the "Download all backups" button in Settings.
 function downloadBothBackups(){
   const jsonRes = downloadJSONFile();
   setTimeout(()=>{
@@ -2053,7 +2016,7 @@ document.getElementById('backupBannerDownloadBtn').addEventListener('click', ()=
 });
 document.getElementById('testBackupBtn').addEventListener('click', ()=>{
   const res = downloadBothBackups();
-  showToast(res.ok ? 'Test backup ✓ — JSON now, CSV in ~2.5s' : 'Could not create the backup file — try again.');
+  showToast(res.ok ? 'Backing up ✓ — JSON now, CSV in ~2.5s' : 'Could not create the backup file — try again.');
 });
 document.getElementById('backupBannerDismissBtn').addEventListener('click', ()=>{
   state.settings.backupDismissedDate = todayISO();
