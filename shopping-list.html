@@ -340,6 +340,7 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check-compat.js"></script>
 </head>
 <body class="dark">
 <div class="wrap">
@@ -989,6 +990,12 @@ const EMBEDDED_SYNC_CONFIG = {
   appId: "1:585784927483:web:6955c1313d76deba887c5e"
 };
 
+// App Check proves requests are coming from THIS app (not a copy of your Firebase
+// config being used elsewhere). Get a reCAPTCHA v3 site key from
+// https://www.google.com/recaptcha/admin/create, register it in Firebase console
+// → Build → App Check, then paste the site key below. Leave as-is to skip App Check.
+const RECAPTCHA_SITE_KEY = "6LfW37MtAAAAAFNUNpqGX0YoQKGzb2K2kQfpp4BN";
+
 function updateSyncStatus(msg, isError){
   const el = document.getElementById('syncStatus');
   if(!el) return;
@@ -1021,6 +1028,18 @@ function connectSync(config, isInitialLoad){
   try{
     if(firebaseApp){ try{ firebaseApp.delete(); }catch(e){} }
     firebaseApp = firebase.initializeApp(config, 'shopSync_' + Date.now());
+
+    if(RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== 'PASTE_YOUR_RECAPTCHA_SITE_KEY_HERE' && firebase.appCheck){
+      try{
+        firebase.appCheck(firebaseApp).activate(
+          new firebase.appCheck.ReCaptchaV3Provider(RECAPTCHA_SITE_KEY),
+          true // auto-refresh the App Check token
+        );
+      }catch(e){
+        console.warn('App Check failed to activate — sync will still work, just without this extra layer.', e);
+      }
+    }
+
     updateSyncStatus('Connecting…', false);
 
     firebaseApp.auth().signInAnonymously().then(()=>{
