@@ -991,10 +991,11 @@ const EMBEDDED_SYNC_CONFIG = {
 };
 
 // App Check proves requests are coming from THIS app (not a copy of your Firebase
-// config being used elsewhere). Get a reCAPTCHA v3 site key from
-// https://www.google.com/recaptcha/admin/create, register it in Firebase console
-// → Build → App Check, then paste the site key below. Leave as-is to skip App Check.
-const RECAPTCHA_SITE_KEY = "6LfW37MtAAAAAFNUNpqGX0YoQKGzb2K2kQfpp4BN";
+// config being used elsewhere). Get a reCAPTCHA Enterprise site key from
+// https://console.cloud.google.com/security/recaptcha (same project as Firebase),
+// register it in Firebase console → Build/Security → App Check, then paste the
+// site key below. Leave as-is to skip App Check.
+const RECAPTCHA_SITE_KEY = "6Le6vbMtAAAAAGj9m5qd4DzUhhTPSGrW7BNRYKmv";
 
 function updateSyncStatus(msg, isError){
   const el = document.getElementById('syncStatus');
@@ -1032,7 +1033,7 @@ function connectSync(config, isInitialLoad){
     if(RECAPTCHA_SITE_KEY && RECAPTCHA_SITE_KEY !== 'PASTE_YOUR_RECAPTCHA_SITE_KEY_HERE' && firebase.appCheck){
       try{
         firebase.appCheck(firebaseApp).activate(
-          new firebase.appCheck.ReCaptchaV3Provider(RECAPTCHA_SITE_KEY),
+          new firebase.appCheck.ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY),
           true // auto-refresh the App Check token
         );
       }catch(e){
