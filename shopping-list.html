@@ -207,15 +207,9 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
 }
 .tick.checked{background:var(--green);border-color:var(--green);color:#fff;}
 .card-name-wrap{flex:1;min-width:0;}
-.name-header-row{display:flex;align-items:flex-start;gap:8px;}
-.card-name{font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;border:none;background:none;color:var(--ink);width:100%;padding:0;resize:none;overflow:hidden;flex:1 1 auto;min-width:0;line-height:1.25;display:block;}
+.card-name{font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;border:none;background:none;color:var(--ink);width:100%;padding:0;}
 .card-name:focus{outline:none;border-bottom:1px solid var(--green);}
-.header-price{flex:0 0 auto;max-width:38%;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;padding-top:1px;}
-.best-line{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-top:5px;font-size:12.5px;color:var(--ink-soft);flex-wrap:nowrap;}
-.best-line-left{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;flex:1 1 auto;min-width:0;}
-.best-line-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:1px;white-space:nowrap;padding-top:1px;}
-.price-trail-top{display:flex;align-items:baseline;gap:5px;justify-content:flex-end;}
-.price-trail-unit{font-size:10.5px;color:var(--ink-faint);}
+.best-line{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12.5px;color:var(--ink-soft);flex-wrap:wrap;}
 .best-tag{
   background:var(--green-soft);color:var(--green-deep);font-family:'Archivo',sans-serif;font-weight:700;
   font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;
@@ -759,7 +753,7 @@ function qualityEmoji(q){
 function priceTypeBadge(entry){
   if(!entry || (!entry.price && !entry.qty)) return ''; // no price entered yet — nothing to label
   if(entry.onSpecial) return `<span class="mini-badge special">🏷️ Special</span>`;
-  if(entry.isWool) return `<span class="mini-badge wool">W%</span>`;
+  if(entry.isWool) return `<span class="mini-badge wool">% Wooly disc.</span>`;
   return `<span class="mini-badge normal">Reg. price</span>`;
 }
 
@@ -794,32 +788,6 @@ function priceTrailInlineHTML(entry){
   if(!trail) return `<span class="best-price">no price yet</span>`;
   const struck = trail.struckValues.map(v=>`<span style="text-decoration:line-through;color:var(--ink-faint);font-weight:500;">${v}</span>`).join(' ');
   return (struck ? struck + ' ' : '') + `<span class="best-price">${trail.finalText}</span> <span style="font-size:10.5px;color:var(--ink-faint);">(${trail.unitText})</span>`;
-}
-// Same price info, but WITHOUT the final price — used for whichever entry's
-// final price is already shown up in the header, so it isn't repeated twice.
-function priceTrailRightNoFinalHTML(entry){
-  const trail = getPriceTrail(entry);
-  if(!trail) return '';
-  const struck = trail.struckValues.map(v=>`<span style="text-decoration:line-through;color:var(--ink-faint);font-weight:500;">${v}</span>`).join(' ');
-  return (struck ? `<div class="price-trail-top">${struck}</div>` : '') +
-         `<div class="price-trail-unit">(${trail.unitText})</div>`;
-}
-// The single "at a glance" price shown top-right of the item name, for
-// whichever entry is primary (Preferred, else Best, else Using).
-function headerPriceHTML(entry){
-  if(!entry) return '';
-  const trail = getPriceTrail(entry);
-  if(!trail) return '';
-  return `<span class="best-price">${trail.finalText}</span>`;
-}
-// Same price info as above, but stacked and right-aligned for the two-column
-// best-line layout: struck-through/final price on top, unit price tucked below.
-function priceTrailRightHTML(entry){
-  const trail = getPriceTrail(entry);
-  if(!trail) return `<span class="best-price" style="font-size:11px;">no price yet</span>`;
-  const struck = trail.struckValues.map(v=>`<span style="text-decoration:line-through;color:var(--ink-faint);font-weight:500;">${v}</span>`).join(' ');
-  return `<div class="price-trail-top">${struck}<span class="best-price">${trail.finalText}</span></div>` +
-         `<div class="price-trail-unit">(${trail.unitText})</div>`;
 }
 
 function productMatchesSearch(product, q){
@@ -1299,53 +1267,40 @@ function renderInner(){
     const usingEntry = product.entries.find(e=>e.usingNow) || null;
     const usingIsPreferred = !!(usingEntry && preferredEntry && usingEntry.id===preferredEntry.id);
     const usingIsHeadlineBest = !!(usingEntry && headline && headline.entry.id===usingEntry.id);
-    // The "at a glance" price shown in the header: Preferred takes priority,
-    // then Best, then Using — whichever exists first.
-    const primaryEntry = preferredEntry || (headline && headline.entry) || usingEntry || null;
-    const trailFor = (entry) => (primaryEntry && entry.id===primaryEntry.id) ? priceTrailRightNoFinalHTML(entry) : priceTrailRightHTML(entry);
 
     const head = document.createElement('div');
     head.className = 'card-head';
     head.innerHTML = `
       <div class="tick ${product.tick?'checked':''}" data-role="productTick">${product.tick?'✓':''}</div>
       <div class="card-name-wrap">
-        <div class="name-header-row">
-          <textarea class="card-name" rows="1" data-id="${product.id}">${escapeHtml(product.name)}</textarea>
-          <div class="header-price">${headerPriceHTML(primaryEntry)}</div>
-        </div>
-        ${ preferredEntry ? `
+        <input class="card-name" value="${escapeAttr(product.name)}" data-id="${product.id}" />
+        ${ usingEntry ? `
           <div class="best-line">
-            <div class="best-line-left">
-              <span class="pref-tag">📌 Preferred</span>
-              <span>${storePill(preferredEntry.store)}${preferredEntry.brand ? ' · '+brandPill(preferredEntry.brand):''}</span>
-              ${ preferredEntry.origin ? `<span>${countryTag(preferredEntry.origin)}</span>` : '' }
-              ${ preferredEntry.quality ? `<span>${qualityEmoji(preferredEntry.quality)}</span>` : '' }
-              ${ priceTypeBadge(preferredEntry) }
-            </div>
-            <div class="best-line-right">${trailFor(preferredEntry)}</div>
+            <span class="using-tag">📦 Using</span>
+            <span>${storePill(usingEntry.store)}${usingEntry.brand ? ' · '+brandPill(usingEntry.brand):''}</span>
+            ${ usingEntry.origin ? `<span>${countryTag(usingEntry.origin)}</span>` : '' }
+            ${ usingEntry.quality ? `<span>${qualityEmoji(usingEntry.quality)}</span>` : '' }
+            ${ priceTypeBadge(usingEntry) }
+            ${ priceTrailInlineHTML(usingEntry) }
           </div>` : '' }
-        ${ headline && !preferredIsHeadlineBest ? `
-          <div class="best-line" style="${preferredEntry ? 'margin-top:2px;' : ''}">
-            <div class="best-line-left">
-              <span class="best-tag">Best</span>
-              <span>${storePill(headline.entry.store)}${headline.entry.brand ? ' · '+brandPill(headline.entry.brand):''}</span>
-              ${ headline.entry.origin ? `<span>${countryTag(headline.entry.origin)}</span>` : '' }
-              ${ headline.entry.quality ? `<span>${qualityEmoji(headline.entry.quality)}</span>` : '' }
-              ${ priceTypeBadge(headline.entry) }
-              ${ bestInfo.familyCount>1 ? `<span style="color:var(--ink-faint);">· different units below</span>` : '' }
-            </div>
-            <div class="best-line-right">${trailFor(headline.entry)}</div>
+        ${ preferredEntry && !usingIsPreferred ? `
+          <div class="best-line" style="${usingEntry ? 'margin-top:2px;' : ''}">
+            <span class="pref-tag">📌 Preferred</span>
+            <span>${storePill(preferredEntry.store)}${preferredEntry.brand ? ' · '+brandPill(preferredEntry.brand):''}</span>
+            ${ preferredEntry.origin ? `<span>${countryTag(preferredEntry.origin)}</span>` : '' }
+            ${ preferredEntry.quality ? `<span>${qualityEmoji(preferredEntry.quality)}</span>` : '' }
+            ${ priceTypeBadge(preferredEntry) }
+            ${ priceTrailInlineHTML(preferredEntry) }
           </div>` : '' }
-        ${ usingEntry && !usingIsPreferred && !usingIsHeadlineBest ? `
-          <div class="best-line" style="${(preferredEntry||headline) ? 'margin-top:2px;' : ''}">
-            <div class="best-line-left">
-              <span class="using-tag">📦 Using</span>
-              <span>${storePill(usingEntry.store)}${usingEntry.brand ? ' · '+brandPill(usingEntry.brand):''}</span>
-              ${ usingEntry.origin ? `<span>${countryTag(usingEntry.origin)}</span>` : '' }
-              ${ usingEntry.quality ? `<span>${qualityEmoji(usingEntry.quality)}</span>` : '' }
-              ${ priceTypeBadge(usingEntry) }
-            </div>
-            <div class="best-line-right">${trailFor(usingEntry)}</div>
+        ${ headline && !preferredIsHeadlineBest && !usingIsHeadlineBest ? `
+          <div class="best-line" style="${(preferredEntry||usingEntry) ? 'margin-top:2px;' : ''}">
+            <span class="best-tag">Best</span>
+            <span>${storePill(headline.entry.store)}${headline.entry.brand ? ' · '+brandPill(headline.entry.brand):''}</span>
+            ${ headline.entry.origin ? `<span>${countryTag(headline.entry.origin)}</span>` : '' }
+            ${ headline.entry.quality ? `<span>${qualityEmoji(headline.entry.quality)}</span>` : '' }
+            ${ priceTypeBadge(headline.entry) }
+            ${ priceTrailInlineHTML(headline.entry) }
+            ${ bestInfo.familyCount>1 ? `<span style="color:var(--ink-faint);">· different units below compared separately</span>` : '' }
           </div>` : '' }
         ${ !headline && !preferredEntry && !usingEntry ? `<div class="no-entries">No prices added yet</div>` : '' }
         ${ product.notes ? `<div class="no-entries" style="color:var(--ink-soft);font-style:normal;">📝 ${escapeHtml(product.notes)}</div>` : '' }
@@ -1377,10 +1332,6 @@ function renderInner(){
     });
     const nameInput = head.querySelector('.card-name');
     nameInput.addEventListener('click', e=>e.stopPropagation());
-    nameInput.addEventListener('input', ()=> autoResizeNameField(nameInput));
-    nameInput.addEventListener('keydown', e=>{
-      if(e.key==='Enter'){ e.preventDefault(); nameInput.blur(); } // commit on Enter instead of adding a line break
-    });
     nameInput.addEventListener('change', e=>{
       product.name = e.target.value;
       saveState();
@@ -1464,14 +1415,7 @@ function renderInner(){
     list.appendChild(card);
   }
 
-  list.querySelectorAll('.card-name').forEach(autoResizeNameField);
   restoreFocus();
-}
-// Textareas don't grow with wrapped text on their own — this keeps the name
-// field's height matched to however many lines it wraps to (1-3 lines typically).
-function autoResizeNameField(el){
-  el.style.height = 'auto';
-  el.style.height = el.scrollHeight + 'px';
 }
 
 function renderEntry(product, entry, bestInfo){
