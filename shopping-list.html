@@ -207,8 +207,9 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
 }
 .tick.checked{background:var(--green);border-color:var(--green);color:#fff;}
 .card-name-wrap{flex:1;min-width:0;}
-.card-name{font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;border:none;background:none;color:var(--ink);width:100%;padding:0;}
+.card-name{font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;border:none;background:none;color:var(--ink);width:100%;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .card-name:focus{outline:none;border-bottom:1px solid var(--green);}
+.tag-symbol{font-size:13px;}
 .best-line{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12.5px;color:var(--ink-soft);flex-wrap:wrap;}
 .best-tag{
   background:var(--green-soft);color:var(--green-deep);font-family:'Archivo',sans-serif;font-weight:700;
@@ -753,7 +754,7 @@ function qualityEmoji(q){
 function priceTypeBadge(entry){
   if(!entry || (!entry.price && !entry.qty)) return ''; // no price entered yet — nothing to label
   if(entry.onSpecial) return `<span class="mini-badge special">🏷️ Special</span>`;
-  if(entry.isWool) return `<span class="mini-badge wool">% Wooly disc.</span>`;
+  if(entry.isWool) return `<span class="mini-badge wool">W%</span>`;
   return `<span class="mini-badge normal">Reg. price</span>`;
 }
 
@@ -788,6 +789,55 @@ function priceTrailInlineHTML(entry){
   if(!trail) return `<span class="best-price">no price yet</span>`;
   const struck = trail.struckValues.map(v=>`<span style="text-decoration:line-through;color:var(--ink-faint);font-weight:500;">${v}</span>`).join(' ');
   return (struck ? struck + ' ' : '') + `<span class="best-price">${trail.finalText}</span> <span style="font-size:10.5px;color:var(--ink-faint);">(${trail.unitText})</span>`;
+}
+
+// Compact price sequence for the collapsed card summary: final price first (with
+// a symbol for whichever discount produced it), then the "was" prices behind it
+// in reverse chronological order, each with its own symbol if a discount produced
+// that step. 🟥 = Woolworths member discount, ⭐️ = on special.
+function getPriceSteps(entry){
+  const calc = effectiveUnitPrice(entry);
+  const price = Number(entry.price);
+  if(!calc || !price) return null;
+  const regularPrice = entry.onSpecial && entry.regularPrice ? Number(entry.regularPrice) : null;
+  const finalTotal = entry.isWool ? price * (1 - combinedDiscount()) : price;
+
+  const steps = [];
+  steps.push({ value: fmt(finalTotal), badge: entry.isWool ? '🟥' : (entry.onSpecial ? '⭐️' : ''), struck:false });
+  if(entry.isWool){
+    steps.push({ value: fmt(price), badge: entry.onSpecial ? '⭐️' : '', struck:true });
+  }
+  if(regularPrice){
+    steps.push({ value: fmt(regularPrice), badge:'', struck:true });
+  }
+  return { steps, unitText: `${fmt(calc.eff)}/${escapeHtml(calc.baseLabel)}` };
+}
+// Builds one full compact line: [tagSymbol] [price steps] (unit) brand store [📦 if also in use]
+function entryLineHTML(entry, tagSymbol, appendUsing){
+  const parts = [];
+  if(tagSymbol) parts.push(`<span class="tag-symbol">${tagSymbol}</span>`);
+
+  const info = getPriceSteps(entry);
+  if(info){
+    const stepsHTML = info.steps.map(s=>{
+      const badgeHTML = s.badge ? `<span class="tag-symbol">${s.badge}</span> ` : '';
+      const style = s.struck ? 'text-decoration:line-through;color:var(--ink-faint);font-weight:500;' : '';
+      const cls = s.struck ? '' : 'best-price';
+      return `${badgeHTML}<span class="${cls}" style="${style}">${s.value}</span>`;
+    }).join(' ');
+    parts.push(stepsHTML);
+    parts.push(`<span style="font-size:10.5px;color:var(--ink-faint);">(${info.unitText})</span>`);
+  } else {
+    parts.push(`<span style="color:var(--ink-faint);">no price yet</span>`);
+  }
+
+  if(entry.brand) parts.push(brandPill(entry.brand));
+  parts.push(storePill(entry.store));
+  if(entry.origin) parts.push(countryTag(entry.origin));
+  if(entry.quality) parts.push(qualityEmoji(entry.quality));
+  if(appendUsing) parts.push(`<span class="tag-symbol">📦</span>`);
+
+  return parts.join(' ');
 }
 
 function productMatchesSearch(product, q){
@@ -1274,33 +1324,16 @@ function renderInner(){
       <div class="tick ${product.tick?'checked':''}" data-role="productTick">${product.tick?'✓':''}</div>
       <div class="card-name-wrap">
         <input class="card-name" value="${escapeAttr(product.name)}" data-id="${product.id}" />
-        ${ usingEntry ? `
-          <div class="best-line">
-            <span class="using-tag">📦 Using</span>
-            <span>${storePill(usingEntry.store)}${usingEntry.brand ? ' · '+brandPill(usingEntry.brand):''}</span>
-            ${ usingEntry.origin ? `<span>${countryTag(usingEntry.origin)}</span>` : '' }
-            ${ usingEntry.quality ? `<span>${qualityEmoji(usingEntry.quality)}</span>` : '' }
-            ${ priceTypeBadge(usingEntry) }
-            ${ priceTrailInlineHTML(usingEntry) }
+        ${ preferredEntry ? `
+          <div class="best-line">${entryLineHTML(preferredEntry, '👌', usingIsPreferred)}</div>` : '' }
+        ${ headline && !preferredIsHeadlineBest ? `
+          <div class="best-line" style="${preferredEntry ? 'margin-top:2px;' : ''}">
+            ${entryLineHTML(headline.entry, '💰', usingIsHeadlineBest)}
+            ${ bestInfo.familyCount>1 ? `<span style="color:var(--ink-faint);">· different units below</span>` : '' }
           </div>` : '' }
-        ${ preferredEntry && !usingIsPreferred ? `
-          <div class="best-line" style="${usingEntry ? 'margin-top:2px;' : ''}">
-            <span class="pref-tag">📌 Preferred</span>
-            <span>${storePill(preferredEntry.store)}${preferredEntry.brand ? ' · '+brandPill(preferredEntry.brand):''}</span>
-            ${ preferredEntry.origin ? `<span>${countryTag(preferredEntry.origin)}</span>` : '' }
-            ${ preferredEntry.quality ? `<span>${qualityEmoji(preferredEntry.quality)}</span>` : '' }
-            ${ priceTypeBadge(preferredEntry) }
-            ${ priceTrailInlineHTML(preferredEntry) }
-          </div>` : '' }
-        ${ headline && !preferredIsHeadlineBest && !usingIsHeadlineBest ? `
-          <div class="best-line" style="${(preferredEntry||usingEntry) ? 'margin-top:2px;' : ''}">
-            <span class="best-tag">Best</span>
-            <span>${storePill(headline.entry.store)}${headline.entry.brand ? ' · '+brandPill(headline.entry.brand):''}</span>
-            ${ headline.entry.origin ? `<span>${countryTag(headline.entry.origin)}</span>` : '' }
-            ${ headline.entry.quality ? `<span>${qualityEmoji(headline.entry.quality)}</span>` : '' }
-            ${ priceTypeBadge(headline.entry) }
-            ${ priceTrailInlineHTML(headline.entry) }
-            ${ bestInfo.familyCount>1 ? `<span style="color:var(--ink-faint);">· different units below compared separately</span>` : '' }
+        ${ usingEntry && !usingIsPreferred && !usingIsHeadlineBest ? `
+          <div class="best-line" style="${(preferredEntry||headline) ? 'margin-top:2px;' : ''}">
+            ${entryLineHTML(usingEntry, '', true)}
           </div>` : '' }
         ${ !headline && !preferredEntry && !usingEntry ? `<div class="no-entries">No prices added yet</div>` : '' }
         ${ product.notes ? `<div class="no-entries" style="color:var(--ink-soft);font-style:normal;">📝 ${escapeHtml(product.notes)}</div>` : '' }
