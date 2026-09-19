@@ -1113,7 +1113,10 @@ function connectSync(config, isInitialLoad){
             return; // don't let a bad shape wipe out a good local list
           }
           candidate.products.forEach(p=>{ if(!Array.isArray(p.entries)) p.entries = []; });
-          if(!candidate.settings) candidate.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+          // Merge (not just fill-if-missing) so a device syncing an older saved
+          // state doesn't wipe out newer settings fields like woolRewards.
+          candidate.settings = Object.assign({}, DEFAULT_SETTINGS, candidate.settings || {});
+          candidate.settings.sort = Object.assign({}, DEFAULT_SETTINGS.sort, candidate.settings.sort || {});
 
           applyingRemote = true;
           state = candidate;
@@ -2240,7 +2243,8 @@ document.getElementById('forcePullBtn').addEventListener('click', ()=>{
     const remote = normalizeFirebaseArrays(snapshot.val());
     if(remote && Array.isArray(remote.products)){
       state = remote;
-      if(!state.settings) state.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+      state.settings = Object.assign({}, DEFAULT_SETTINGS, state.settings || {});
+      state.settings.sort = Object.assign({}, DEFAULT_SETTINGS.sort, state.settings.sort || {});
       render();
       storageSet(STORAGE_KEY, JSON.stringify(state));
       updateSyncStatus(`Pulled ${state.products.length} item(s) from the shared list.`, false);
