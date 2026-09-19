@@ -428,6 +428,10 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
         <input type="number" class="pct-input" id="woolGiftcard" value="4" min="0" max="100" step="0.5">
       </div>
       <div class="settings-row">
+        <div class="settings-label">Rewards points<small>2,000 pts = $10 off = 0.5%; use 1% if on Everyday Extra</small></div>
+        <input type="number" class="pct-input" id="woolRewards" value="0.5" min="0" max="100" step="0.1">
+      </div>
+      <div class="settings-row">
         <div class="settings-label" style="font-weight:700;">Combined effective discount</div>
         <span class="pct-input" id="woolCombined" style="border:none;background:none;font-weight:700;">13.4%</span>
       </div>
@@ -509,7 +513,7 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
 const STORAGE_KEY = 'shop-ledger-data';
 
 const DEFAULT_SETTINGS = {
-  woolMonthly: 10, woolGiftcard: 4,
+  woolMonthly: 10, woolGiftcard: 4, woolRewards: 0.5,
   stores: ['Woolworths','Coles','Aldi','IGA','Costco','Chemist Warehouse'],
   brands: [],
   sort: { primary:'none', secondary:'none', tertiary:'none' },
@@ -567,7 +571,8 @@ function sortAlpha(list){
 function combinedDiscount(){
   const m = Number(state.settings.woolMonthly)||0;
   const g = Number(state.settings.woolGiftcard)||0;
-  return 1 - (1-m/100)*(1-g/100);
+  const r = Number(state.settings.woolRewards)||0;
+  return 1 - (1-m/100)*(1-g/100)*(1-r/100);
 }
 
 function computeUnitPrice(priceValue, entry){
@@ -991,6 +996,7 @@ async function loadState(){
 
   document.getElementById('woolMonthly').value = state.settings.woolMonthly;
   document.getElementById('woolGiftcard').value = state.settings.woolGiftcard;
+  document.getElementById('woolRewards').value = state.settings.woolRewards;
   applyTheme(state.settings.theme === 'dark');
   document.getElementById('darkModeToggle').checked = state.settings.theme === 'dark';
   document.getElementById('backupReminderToggle').checked = !!state.settings.backupReminderEnabled;
@@ -2153,6 +2159,9 @@ document.getElementById('woolMonthly').addEventListener('input', e=>{
 });
 document.getElementById('woolGiftcard').addEventListener('input', e=>{
   state.settings.woolGiftcard = e.target.value; updateCombinedLabel(); saveState(); render();
+});
+document.getElementById('woolRewards').addEventListener('input', e=>{
+  state.settings.woolRewards = e.target.value; updateCombinedLabel(); saveState(); render();
 });
 
 document.getElementById('addStoreChip').addEventListener('click', ()=>{
