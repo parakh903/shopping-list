@@ -796,46 +796,38 @@ function priceTrailInlineHTML(entry){
   return (struck ? struck + ' ' : '') + `<span class="best-price">${trail.finalText}</span> <span style="font-size:10.5px;color:var(--ink-faint);">(${trail.unitText})</span>`;
 }
 
-// Compact price sequence for the collapsed card summary: final price first (with
-// a symbol for whichever discount produced it), then the "was" prices behind it
-// in reverse chronological order, each with its own symbol if a discount produced
-// that step. 🟥 = Woolworths member discount, ⭐️ = on special.
-function getPriceSteps(entry){
+// Compact price line for the collapsed card summary. All segments are the
+// same size (no strikethrough) — colour is what distinguishes them:
+// red = the price you'd pay (with its discount symbol), orange = the original
+// price it was reduced from, yellow = unit price, green = the further-reduced
+// Woolworths member-discount unit price (🟥), separated by "|".
+function priceLineHTML(entry){
   const calc = effectiveUnitPrice(entry);
   const price = Number(entry.price);
-  if(!calc || !price) return null;
+  if(!calc || !price) return `<span style="color:var(--ink-faint);">no price yet</span>`;
   const regularPrice = entry.onSpecial && entry.regularPrice ? Number(entry.regularPrice) : null;
-  const finalTotal = entry.isWool ? price * (1 - combinedDiscount()) : price;
 
-  const steps = [];
-  steps.push({ value: fmt(finalTotal), badge: entry.isWool ? '🟥' : (entry.onSpecial ? '⭐️' : ''), struck:false });
-  if(entry.isWool){
-    steps.push({ value: fmt(price), badge: entry.onSpecial ? '⭐️' : '', struck:true });
-  }
+  const segs = [];
+  segs.push(`<span style="color:#FF6B6B;font-weight:700;">${entry.onSpecial?'⭐️ ':''}${fmt(price)}</span>`);
   if(regularPrice){
-    steps.push({ value: fmt(regularPrice), badge:'', struck:true });
+    segs.push(`<span style="color:#FFA94D;font-weight:700;">${fmt(regularPrice)}</span>`);
   }
-  return { steps, unitText: `${fmt(calc.eff)}/${escapeHtml(calc.baseLabel)}` };
+  segs.push(`<span style="color:#FFD43B;font-weight:700;">(${fmt(calc.raw)}/${escapeHtml(calc.baseLabel)})</span>`);
+  if(entry.isWool){
+    segs.push(`<span style="color:#69DB7C;font-weight:700;">🟥 (${fmt(calc.eff)}/${escapeHtml(calc.baseLabel)})</span>`);
+  }
+  return segs.join(`<span style="color:var(--ink-faint);margin:0 1px;">|</span>`);
 }
-// Builds one full compact line: [tagSymbol] [price steps] (unit) brand store [📦 if also in use]
+// Small note line for an individual entry (sub-item), shown right below its
+// price line in the collapsed card — same style as the product-level note.
+function entryNoteHTML(entry){
+  if(!entry || !entry.notes) return '';
+  return `<div class="no-entries" style="color:var(--ink-soft);font-style:normal;margin-top:1px;margin-left:2px;">📝 ${escapeHtml(entry.notes)}</div>`;
+}
 function entryLineHTML(entry, tagSymbol, appendUsing){
   const parts = [];
   if(tagSymbol) parts.push(`<span class="tag-symbol">${tagSymbol}</span>`);
-
-  const info = getPriceSteps(entry);
-  if(info){
-    const stepsHTML = info.steps.map(s=>{
-      const badgeHTML = s.badge ? `<span class="tag-symbol">${s.badge}</span> ` : '';
-      const style = s.struck ? 'text-decoration:line-through;color:var(--ink-faint);font-weight:500;' : '';
-      const cls = s.struck ? '' : 'best-price';
-      return `${badgeHTML}<span class="${cls}" style="${style}">${s.value}</span>`;
-    }).join(' ');
-    parts.push(stepsHTML);
-    parts.push(`<span style="font-size:10.5px;color:var(--ink-faint);">(${info.unitText})</span>`);
-  } else {
-    parts.push(`<span style="color:var(--ink-faint);">no price yet</span>`);
-  }
-
+  parts.push(priceLineHTML(entry));
   if(entry.brand) parts.push(brandPill(entry.brand));
   parts.push(storePill(entry.store));
   if(entry.origin) parts.push(countryTag(entry.origin));
@@ -1334,16 +1326,19 @@ function renderInner(){
       <div class="card-name-wrap">
         <input class="card-name" value="${escapeAttr(product.name)}" data-id="${product.id}" />
         ${ preferredEntry ? `
-          <div class="best-line">${entryLineHTML(preferredEntry, '👌', usingIsPreferred)}</div>` : '' }
+          <div class="best-line">${entryLineHTML(preferredEntry, '👌', usingIsPreferred)}</div>
+          ${entryNoteHTML(preferredEntry)}` : '' }
         ${ headline && !preferredIsHeadlineBest ? `
           <div class="best-line" style="${preferredEntry ? 'margin-top:2px;' : ''}">
             ${entryLineHTML(headline.entry, '💰', usingIsHeadlineBest)}
             ${ bestInfo.familyCount>1 ? `<span style="color:var(--ink-faint);">· different units below</span>` : '' }
-          </div>` : '' }
+          </div>
+          ${entryNoteHTML(headline.entry)}` : '' }
         ${ usingEntry && !usingIsPreferred && !usingIsHeadlineBest ? `
           <div class="best-line" style="${(preferredEntry||headline) ? 'margin-top:2px;' : ''}">
             ${entryLineHTML(usingEntry, '', true)}
-          </div>` : '' }
+          </div>
+          ${entryNoteHTML(usingEntry)}` : '' }
         ${ !headline && !preferredEntry && !usingEntry ? `<div class="no-entries">No prices added yet</div>` : '' }
         ${ product.notes ? `<div class="no-entries" style="color:var(--ink-soft);font-style:normal;">📝 ${escapeHtml(product.notes)}</div>` : '' }
         ${ product.lastBoughtDate ? `<div class="no-entries" style="color:var(--ink-faint);font-style:normal;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
