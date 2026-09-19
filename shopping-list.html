@@ -210,7 +210,8 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
 .card-name{font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;border:none;background:none;color:var(--ink);width:100%;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .card-name:focus{outline:none;border-bottom:1px solid var(--green);}
 .tag-symbol{font-size:13px;}
-.best-line{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12.5px;color:var(--ink-soft);flex-wrap:wrap;}
+.best-line{margin-top:5px;font-size:12.5px;color:var(--ink-soft);line-height:1.9;}
+.best-line > *{vertical-align:middle;}
 .best-tag{
   background:var(--green-soft);color:var(--green-deep);font-family:'Archivo',sans-serif;font-weight:700;
   font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;
@@ -266,7 +267,8 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
 .ec-line1{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--ink);}
 .ec-line1 .placeholder{color:var(--ink-faint);font-weight:500;font-style:italic;}
 .ec-line2{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:3px;}
-.ec-line3{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;font-size:12.5px;}
+.ec-line3{margin-top:4px;font-size:12.5px;line-height:1.9;}
+.ec-line3 > *{vertical-align:middle;}
 .mini-badge{font-size:9.5px;padding:2px 6px;border-radius:20px;font-weight:700;white-space:nowrap;}
 .mini-badge.special{background:var(--amber-soft);color:var(--amber-deep);}
 .mini-badge.pref{background:var(--amber-soft);color:var(--amber-deep);}
@@ -817,7 +819,7 @@ function priceLineHTML(entry){
   if(entry.isWool){
     segs.push(`<span style="color:#69DB7C;font-weight:700;">🟥 (${fmt(calc.eff)}/${escapeHtml(calc.baseLabel)})</span>`);
   }
-  return segs.join(`<span style="color:var(--ink-faint);margin:0 1px;">|</span>`);
+  return segs.join(`<span style="color:var(--ink-faint);margin:0 4px;">|</span>`);
 }
 function entryLineHTML(entry, tagSymbol, appendUsing){
   const parts = [];
