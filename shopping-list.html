@@ -210,7 +210,9 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
 .card-name{font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;border:none;background:none;color:var(--ink);width:100%;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .card-name:focus{outline:none;border-bottom:1px solid var(--green);}
 .tag-symbol{font-size:13px;}
-.best-line{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12.5px;color:var(--ink-soft);flex-wrap:wrap;}
+.best-line{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12.5px;color:var(--ink-soft);flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.best-line::-webkit-scrollbar{display:none;}
+.best-line > *{flex-shrink:0;}
 .best-tag{
   background:var(--green-soft);color:var(--green-deep);font-family:'Archivo',sans-serif;font-weight:700;
   font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;
@@ -818,12 +820,6 @@ function priceLineHTML(entry){
   }
   return segs.join(`<span style="color:var(--ink-faint);margin:0 1px;">|</span>`);
 }
-// Small note line for an individual entry (sub-item), shown right below its
-// price line in the collapsed card — same style as the product-level note.
-function entryNoteHTML(entry){
-  if(!entry || !entry.notes) return '';
-  return `<div class="no-entries" style="color:var(--ink-soft);font-style:normal;margin-top:1px;margin-left:2px;">📝 ${escapeHtml(entry.notes)}</div>`;
-}
 function entryLineHTML(entry, tagSymbol, appendUsing){
   const parts = [];
   if(tagSymbol) parts.push(`<span class="tag-symbol">${tagSymbol}</span>`);
@@ -833,6 +829,7 @@ function entryLineHTML(entry, tagSymbol, appendUsing){
   if(entry.origin) parts.push(countryTag(entry.origin));
   if(entry.quality) parts.push(qualityEmoji(entry.quality));
   if(appendUsing) parts.push(`<span class="tag-symbol">📦</span>`);
+  if(entry.notes) parts.push(`<span style="color:var(--ink-soft);">📝 ${escapeHtml(entry.notes)}</span>`);
 
   return parts.join(' ');
 }
@@ -1326,19 +1323,16 @@ function renderInner(){
       <div class="card-name-wrap">
         <input class="card-name" value="${escapeAttr(product.name)}" data-id="${product.id}" />
         ${ preferredEntry ? `
-          <div class="best-line">${entryLineHTML(preferredEntry, '👌', usingIsPreferred)}</div>
-          ${entryNoteHTML(preferredEntry)}` : '' }
+          <div class="best-line">${entryLineHTML(preferredEntry, '👌', usingIsPreferred)}</div>` : '' }
         ${ headline && !preferredIsHeadlineBest ? `
           <div class="best-line" style="${preferredEntry ? 'margin-top:2px;' : ''}">
             ${entryLineHTML(headline.entry, '💰', usingIsHeadlineBest)}
             ${ bestInfo.familyCount>1 ? `<span style="color:var(--ink-faint);">· different units below</span>` : '' }
-          </div>
-          ${entryNoteHTML(headline.entry)}` : '' }
+          </div>` : '' }
         ${ usingEntry && !usingIsPreferred && !usingIsHeadlineBest ? `
           <div class="best-line" style="${(preferredEntry||headline) ? 'margin-top:2px;' : ''}">
             ${entryLineHTML(usingEntry, '', true)}
-          </div>
-          ${entryNoteHTML(usingEntry)}` : '' }
+          </div>` : '' }
         ${ !headline && !preferredEntry && !usingEntry ? `<div class="no-entries">No prices added yet</div>` : '' }
         ${ product.notes ? `<div class="no-entries" style="color:var(--ink-soft);font-style:normal;">📝 ${escapeHtml(product.notes)}</div>` : '' }
         ${ product.lastBoughtDate ? `<div class="no-entries" style="color:var(--ink-faint);font-style:normal;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
