@@ -1319,6 +1319,11 @@ function renderInner(){
     const usingEntry = product.entries.find(e=>e.usingNow) || null;
     const usingIsPreferred = !!(usingEntry && preferredEntry && usingEntry.id===preferredEntry.id);
     const usingIsHeadlineBest = !!(usingEntry && headline && headline.entry.id===usingEntry.id);
+    // Entries that don't have a valid price yet (so they can't be "Best") and
+    // aren't already shown as Preferred/Using — e.g. a just-added row where
+    // you've only filled in the store so far. Show them anyway, incomplete or not.
+    const shownIds = new Set([preferredEntry, headline && headline.entry, usingEntry].filter(Boolean).map(e=>e.id));
+    const incompleteEntries = product.entries.filter(e => !shownIds.has(e.id) && !effectiveUnitPrice(e));
 
     const head = document.createElement('div');
     head.className = 'card-head';
@@ -1337,7 +1342,11 @@ function renderInner(){
           <div class="best-line" style="${(preferredEntry||headline) ? 'margin-top:2px;' : ''}">
             ${entryLineHTML(usingEntry, '', true)}
           </div>` : '' }
-        ${ !headline && !preferredEntry && !usingEntry ? `<div class="no-entries">No prices added yet</div>` : '' }
+        ${ incompleteEntries.map(e => `
+          <div class="best-line" style="${(preferredEntry||headline||usingEntry) ? 'margin-top:2px;' : ''}">
+            ${entryLineHTML(e, '', false)}
+          </div>`).join('') }
+        ${ product.entries.length===0 ? `<div class="no-entries">No prices added yet</div>` : '' }
         ${ product.notes ? `<div class="no-entries" style="color:var(--ink-soft);font-style:normal;">📝 ${escapeHtml(product.notes)}</div>` : '' }
         ${ product.lastBoughtDate ? `<div class="no-entries" style="color:var(--ink-faint);font-style:normal;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span>🗓 Bought ${relativeDateText(product.lastBoughtDate)}</span>
