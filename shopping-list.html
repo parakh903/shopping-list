@@ -210,8 +210,11 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
 .card-name{font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;border:none;background:none;color:var(--ink);width:100%;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .card-name:focus{outline:none;border-bottom:1px solid var(--green);}
 .tag-symbol{font-size:13px;}
-.best-line{margin-top:5px;font-size:12px;color:var(--ink-soft);line-height:1.85;}
-.best-line > *{vertical-align:middle;}
+.best-line{margin-top:5px;}
+.best-line-row1{font-size:12px;color:var(--ink-soft);line-height:1.85;}
+.best-line-row1 > *{vertical-align:middle;}
+.best-line-row2{font-size:12px;color:var(--ink-soft);line-height:1.85;margin-top:1px;}
+.best-line-row2 > *{vertical-align:middle;}
 .best-tag{
   background:var(--green-soft);color:var(--green-deep);font-family:'Archivo',sans-serif;font-weight:700;
   font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;
@@ -822,17 +825,17 @@ function priceLineHTML(entry){
   return segs.join(`<span style="color:var(--ink-faint);margin:0 4px;">|</span>`);
 }
 function entryLineHTML(entry, tagSymbol, appendUsing){
-  const parts = [];
-  if(tagSymbol) parts.push(`<span class="tag-symbol">${tagSymbol}</span>`);
-  parts.push(priceLineHTML(entry));
-  if(entry.brand) parts.push(brandPill(entry.brand));
-  parts.push(storePill(entry.store));
-  if(entry.origin) parts.push(countryTag(entry.origin));
-  if(entry.quality) parts.push(qualityEmoji(entry.quality));
-  if(appendUsing) parts.push(`<span class="tag-symbol">📦</span>`);
-  if(entry.notes) parts.push(`<span style="color:var(--ink-soft);">📝 ${escapeHtml(entry.notes)}</span>`);
+  const line1 = [];
+  if(tagSymbol) line1.push(`<span class="tag-symbol">${tagSymbol}</span>`);
+  line1.push(storePill(entry.store) + (entry.brand ? ' · '+brandPill(entry.brand) : ''));
+  if(entry.origin) line1.push(countryTag(entry.origin));
+  if(entry.quality) line1.push(qualityEmoji(entry.quality));
 
-  return parts.join(' ');
+  const line2 = [priceLineHTML(entry)];
+  if(appendUsing) line2.push(`<span class="tag-symbol">📦</span>`);
+  if(entry.notes) line2.push(`<span style="color:var(--ink-soft);">📝 ${escapeHtml(entry.notes)}</span>`);
+
+  return `<div class="best-line-row1">${line1.join(' ')}</div><div class="best-line-row2">${line2.join(' ')}</div>`;
 }
 
 function productMatchesSearch(product, q){
@@ -1467,18 +1470,18 @@ function renderEntry(product, entry, bestInfo){
   ec.innerHTML = `
     <div class="ec-tap" data-role="toggleExpand">
       <div class="ec-line1">
+        ${ entry.preferred ? `<span class="tag-symbol">👌</span> ` : '' }
+        ${ isBest ? `<span class="tag-symbol">💰</span> ` : '' }
         ${ entry.store || entry.brand
           ? `<span>${storePill(entry.store)}${entry.brand ? ' · '+brandPill(entry.brand):''}</span>`
           : `<span class="placeholder">Tap to add details</span>` }
         ${ entry.origin ? `<span title="${escapeAttr(entry.origin)}">${countryTag(entry.origin)}</span>` : '' }
         ${ entry.quality ? `<span>${qualityEmoji(entry.quality)}</span>` : '' }
       </div>
-      <div class="ec-line2">
-        ${ entry.usingNow ? `<span class="mini-badge using">📦 Using</span>` : '' }
-        ${ entry.preferred ? `<span class="mini-badge pref">📌 Preferred</span>` : '' }
-        ${ isBest ? `<span class="mini-badge best">★ Best</span>` : '' }
+      <div class="ec-line3">
+        ${ priceLineHTML(entry) }
+        ${ entry.usingNow ? ` <span class="tag-symbol">📦</span>` : '' }
       </div>
-      <div class="ec-line3">${ priceLineHTML(entry) }</div>
     </div>
     <div class="ec-actions">
       <button class="mini-icon-btn" data-role="deleteMini" title="Remove row">✕</button>
