@@ -193,7 +193,7 @@ body.dark .card.done .card-name,
 body.dark .card.done .best-price,
 body.dark .card.done .price-final,
 body.dark .card.done .no-entries{
-  color:#4ADE80;
+  color:#CC8080;
   text-decoration:none;
   text-shadow:none;
 }
@@ -205,7 +205,7 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
   flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;
   font-size:14px;color:transparent;
 }
-.tick.checked{background:var(--green);border-color:var(--green);color:#fff;}
+.tick.checked{background:#CC8080;border-color:#CC8080;color:#fff;}
 .card-name-wrap{flex:1;min-width:0;}
 .card-name{font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;border:none;background:none;color:var(--ink);width:100%;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .card-name:focus{outline:none;border-bottom:1px solid var(--green);}
@@ -830,9 +830,9 @@ function entryLineHTML(entry, tagSymbol, appendUsing){
   line1.push(storePill(entry.store) + (entry.brand ? ' · '+brandPill(entry.brand) : ''));
   if(entry.origin) line1.push(countryTag(entry.origin));
   if(entry.quality) line1.push(qualityEmoji(entry.quality));
+  if(appendUsing) line1.push(`<span class="tag-symbol">📦</span>`);
 
   const line2 = [priceLineHTML(entry)];
-  if(appendUsing) line2.push(`<span class="tag-symbol">📦</span>`);
   if(entry.notes) line2.push(`<span style="color:var(--ink-soft);">📝 ${escapeHtml(entry.notes)}</span>`);
 
   return `<div class="best-line-row1">${line1.join(' ')}</div><div class="best-line-row2">${line2.join(' ')}</div>`;
@@ -1477,10 +1477,10 @@ function renderEntry(product, entry, bestInfo){
           : `<span class="placeholder">Tap to add details</span>` }
         ${ entry.origin ? `<span title="${escapeAttr(entry.origin)}">${countryTag(entry.origin)}</span>` : '' }
         ${ entry.quality ? `<span>${qualityEmoji(entry.quality)}</span>` : '' }
+        ${ entry.usingNow ? `<span class="tag-symbol">📦</span>` : '' }
       </div>
       <div class="ec-line3">
         ${ priceLineHTML(entry) }
-        ${ entry.usingNow ? ` <span class="tag-symbol">📦</span>` : '' }
       </div>
     </div>
     <div class="ec-actions">
