@@ -215,6 +215,7 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
 .best-line-row1 > *{vertical-align:middle;}
 .best-line-row2{font-size:12px;color:var(--ink-soft);line-height:1.85;margin-top:1px;}
 .best-line-row2 > *{vertical-align:middle;}
+.best-line-row3{font-size:12px;color:var(--ink-soft);margin-top:1px;}
 .best-tag{
   background:var(--green-soft);color:var(--green-deep);font-family:'Archivo',sans-serif;font-weight:700;
   font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;white-space:nowrap;
@@ -832,10 +833,13 @@ function entryLineHTML(entry, tagSymbol, appendUsing){
   if(entry.quality) line1.push(qualityEmoji(entry.quality));
   if(appendUsing) line1.push(`<span class="tag-symbol">📦</span>`);
 
-  const line2 = [priceLineHTML(entry)];
-  if(entry.notes) line2.push(`<span style="color:var(--ink-soft);">📝 ${escapeHtml(entry.notes)}</span>`);
+  const rows = [
+    `<div class="best-line-row1">${line1.join(' ')}</div>`,
+    `<div class="best-line-row2">${priceLineHTML(entry)}</div>`
+  ];
+  if(entry.notes) rows.push(`<div class="best-line-row3">📝 ${escapeHtml(entry.notes)}</div>`);
 
-  return `<div class="best-line-row1">${line1.join(' ')}</div><div class="best-line-row2">${line2.join(' ')}</div>`;
+  return rows.join('');
 }
 
 function productMatchesSearch(product, q){
@@ -1491,6 +1495,7 @@ function renderEntry(product, entry, bestInfo){
       <div class="ec-line3">
         ${ priceLineHTML(entry) }
       </div>
+      ${ entry.notes ? `<div class="ec-line3" style="color:var(--ink-soft);">📝 ${escapeHtml(entry.notes)}</div>` : '' }
     </div>
     <div class="ec-actions">
       <button class="mini-icon-btn" data-role="deleteMini" title="Remove row">✕</button>
