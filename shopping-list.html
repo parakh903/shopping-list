@@ -1317,16 +1317,16 @@ function renderInner(){
 
     const bestInfo = bestEntry(product);
     const headline = bestInfo ? bestInfo.headline : null;
-    const preferredEntry = product.entries.find(e=>e.preferred) || null;
-    const preferredCalc = preferredEntry ? effectiveUnitPrice(preferredEntry) : null;
-    const preferredIsHeadlineBest = !!(preferredEntry && headline && headline.entry.id===preferredEntry.id);
+    const preferredEntries = product.entries.filter(e=>e.preferred);
+    const preferredIds = new Set(preferredEntries.map(e=>e.id));
+    const headlineIsPreferred = !!(headline && preferredIds.has(headline.entry.id));
     const usingEntry = product.entries.find(e=>e.usingNow) || null;
-    const usingIsPreferred = !!(usingEntry && preferredEntry && usingEntry.id===preferredEntry.id);
+    const usingIsPreferred = !!(usingEntry && preferredIds.has(usingEntry.id));
     const usingIsHeadlineBest = !!(usingEntry && headline && headline.entry.id===usingEntry.id);
     // Entries that don't have a valid price yet (so they can't be "Best") and
     // aren't already shown as Preferred/Using — e.g. a just-added row where
     // you've only filled in the store so far. Show them anyway, incomplete or not.
-    const shownIds = new Set([preferredEntry, headline && headline.entry, usingEntry].filter(Boolean).map(e=>e.id));
+    const shownIds = new Set([...preferredIds, headline && headline.entry.id, usingEntry && usingEntry.id].filter(Boolean));
     const incompleteEntries = product.entries.filter(e => !shownIds.has(e.id) && !effectiveUnitPrice(e));
 
     const head = document.createElement('div');
@@ -1335,19 +1335,27 @@ function renderInner(){
       <div class="tick ${product.tick?'checked':''}" data-role="productTick">${product.tick?'✓':''}</div>
       <div class="card-name-wrap">
         <input class="card-name" value="${escapeAttr(product.name)}" data-id="${product.id}" />
-        ${ preferredEntry ? `
-          <div class="best-line">${entryLineHTML(preferredEntry, '👌', usingIsPreferred)}</div>` : '' }
-        ${ headline && !preferredIsHeadlineBest ? `
-          <div class="best-line" style="${preferredEntry ? 'margin-top:2px;' : ''}">
+        ${ preferredEntries.map((pe, i) => {
+            const isAlsoBest = !!(headline && headline.entry.id===pe.id);
+            const tag = '👌' + (isAlsoBest ? '💰' : '');
+            const isAlsoUsing = !!(usingEntry && usingEntry.id===pe.id);
+            return `
+          <div class="best-line" style="${i>0 ? 'margin-top:2px;' : ''}">
+            ${entryLineHTML(pe, tag, isAlsoUsing)}
+            ${ isAlsoBest && bestInfo.familyCount>1 ? `<span style="color:var(--ink-faint);">· different units below</span>` : '' }
+          </div>`;
+          }).join('') }
+        ${ headline && !headlineIsPreferred ? `
+          <div class="best-line" style="${preferredEntries.length ? 'margin-top:2px;' : ''}">
             ${entryLineHTML(headline.entry, '💰', usingIsHeadlineBest)}
             ${ bestInfo.familyCount>1 ? `<span style="color:var(--ink-faint);">· different units below</span>` : '' }
           </div>` : '' }
         ${ usingEntry && !usingIsPreferred && !usingIsHeadlineBest ? `
-          <div class="best-line" style="${(preferredEntry||headline) ? 'margin-top:2px;' : ''}">
+          <div class="best-line" style="${(preferredEntries.length||headline) ? 'margin-top:2px;' : ''}">
             ${entryLineHTML(usingEntry, '', true)}
           </div>` : '' }
         ${ incompleteEntries.map(e => `
-          <div class="best-line" style="${(preferredEntry||headline||usingEntry) ? 'margin-top:2px;' : ''}">
+          <div class="best-line" style="${(preferredEntries.length||headline||usingEntry) ? 'margin-top:2px;' : ''}">
             ${entryLineHTML(e, '', false)}
           </div>`).join('') }
         ${ product.entries.length===0 ? `<div class="no-entries">No prices added yet</div>` : '' }
@@ -1681,9 +1689,7 @@ function renderEntry(product, entry, bestInfo){
     saveState(); render();
   });
   form.querySelector('[data-role="preferredBtn"]').addEventListener('click', ()=>{
-    const turningOn = !entry.preferred;
-    product.entries.forEach(e=> e.preferred = false);
-    entry.preferred = turningOn;
+    entry.preferred = !entry.preferred;
     saveState(); render();
   });
   form.querySelector('[data-role="deleteBtn"]').addEventListener('click', ()=>{
@@ -1888,7 +1894,6 @@ function importFromCSV(text){
       else if(q) entry.quality='ok';
     }
     entry.isWool = entry.store.toLowerCase()==='woolworths';
-    if(entry.preferred) product.entries.forEach(e=>e.preferred=false);
     if(entry.usingNow) product.entries.forEach(e=>e.usingNow=false);
 
     product.entries.push(entry);
