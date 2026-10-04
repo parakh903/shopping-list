@@ -373,7 +373,7 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
     <div class="panel" id="searchPanel">
       <div class="search-row" style="margin-top:0;">
         <span class="search-icon">⌕</span>
-        <input type="text" id="searchInput" placeholder="Find an item, or type a new one to add…" autocomplete="off">
+        <input type="text" id="searchInput" placeholder="Find an item, or type a new one to add…" autocomplete="off" enterkeyhint="search">
         <button class="clear-search" id="clearSearch" style="display:none;">✕</button>
       </div>
       <div id="quickAddRow" style="display:none;margin-top:8px;">
@@ -1720,8 +1720,19 @@ function togglePanel(panelId, btnId, onOpen){
   }
 }
 document.getElementById('searchBtn').addEventListener('click', ()=> togglePanel('searchPanel','searchBtn', ()=>{
-  setTimeout(()=> document.getElementById('searchInput').focus(), 50);
+  document.getElementById('searchInput').focus();
 }));
+
+// Tap anywhere outside an open panel (the list, header title, backdrop) to close it —
+// avoids having to reach back up to the same top icon button to dismiss.
+document.addEventListener('click', (e)=>{
+  if(!document.querySelector('.panel.open')) return;
+  const tappedInsidePanel = e.target.closest('.panel');
+  const tappedTriggerBtn = e.target.closest('#searchBtn, #importBtn, #gearBtn, #sortBtn');
+  if(!tappedInsidePanel && !tappedTriggerBtn){
+    closeAllPanels();
+  }
+});
 document.getElementById('importBtn').addEventListener('click', ()=> togglePanel('importPanel','importBtn'));
 document.getElementById('gearBtn').addEventListener('click', ()=> togglePanel('settingsPanel','gearBtn'));
 document.getElementById('sortBtn').addEventListener('click', ()=> togglePanel('sortPanel','sortBtn'));
@@ -1760,8 +1771,12 @@ searchInput.addEventListener('input', e=>{
   render();
 });
 searchInput.addEventListener('keydown', e=>{
-  if(e.key==='Enter' && quickAddRow.style.display!=='none'){
-    addProduct(searchQuery.trim());
+  if(e.key==='Enter'){
+    if(quickAddRow.style.display!=='none'){
+      addProduct(searchQuery.trim());
+    }
+    searchInput.blur();
+    closeAllPanels();
   }
 });
 quickAddBtn.addEventListener('click', ()=>{
