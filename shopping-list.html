@@ -599,6 +599,21 @@ function effectiveUnitPrice(entry){
   return { raw: base.raw, eff, family: base.family, baseLabel: base.baseLabel };
 }
 
+// Sub-item display order: grouped by unit family (so $/kg and $/ea entries
+// aren't interleaved), cheapest effective unit price first within each
+// family, entries with no computable price last.
+function sortedEntriesForDisplay(product){
+  return [...product.entries].sort((a,b)=>{
+    const ca = effectiveUnitPrice(a);
+    const cb = effectiveUnitPrice(b);
+    if(!ca && !cb) return 0;
+    if(!ca) return 1;
+    if(!cb) return -1;
+    if(ca.family !== cb.family) return ca.family.localeCompare(cb.family);
+    return ca.eff - cb.eff;
+  });
+}
+
 function bestEntry(product){
   const byFamily = {};
   for(const e of product.entries){
@@ -1451,7 +1466,7 @@ function renderInner(){
       entriesWrap.appendChild(toolbar);
     }
 
-    for(const entry of product.entries){
+    for(const entry of sortedEntriesForDisplay(product)){
       entriesWrap.appendChild(renderEntry(product, entry, bestInfo));
     }
 
