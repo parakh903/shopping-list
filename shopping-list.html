@@ -238,7 +238,7 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
 /* Entries */
 .entries{display:none;border-top:1px dashed var(--line);}
 .card.open .entries{display:block;}
-.entries-toolbar{display:flex;justify-content:flex-end;padding:8px 14px 0;}
+.entries-toolbar{display:flex;justify-content:space-between;gap:12px;padding:8px 14px 0;}
 .item-note-wrap{padding:10px 14px 0;}
 .item-note-input{
   width:100%;padding:8px 10px;border-radius:8px;border:1px dashed var(--line);
@@ -312,8 +312,8 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
 .quality-buttons button{background:var(--input-bg);border:1px solid var(--line);border-radius:8px;font-size:16px;padding:4px 9px;cursor:pointer;opacity:0.35;}
 .quality-buttons button.active{opacity:1;border-color:var(--amber);background:var(--amber-soft);}
 
-.form-actions{display:flex;justify-content:space-between;align-items:center;margin-top:12px;}
-.form-actions .left-btns{display:flex;gap:6px;}
+.form-actions{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.form-actions .left-btns{display:flex;flex-wrap:wrap;gap:6px;}
 .text-btn{background:none;border:1px solid var(--line);border-radius:8px;font-size:12px;padding:6px 10px;cursor:pointer;color:var(--ink-soft);}
 .text-btn.pref-active{border-color:var(--amber);background:var(--amber-soft);color:var(--amber-deep);}
 .text-btn.using-active{border-color:var(--using-deep);background:var(--using-soft);color:var(--using-deep);}
@@ -1450,10 +1450,27 @@ function renderInner(){
     });
     entriesWrap.appendChild(repeatWrap);
 
+    const toolbar = document.createElement('div');
+    toolbar.className = 'entries-toolbar';
+    const dupItemBtn = document.createElement('button');
+    dupItemBtn.className = 'expand-all-btn';
+    dupItemBtn.textContent = '⧉ Duplicate item';
+    dupItemBtn.addEventListener('click', ()=>{
+      // Copies name, notes, buy-again days and all sub-items; resets ticked + last-bought.
+      const copy = JSON.parse(JSON.stringify(product));
+      copy.id = uid();
+      copy.name = (product.name||'') + ' (copy)';
+      copy.tick = false;
+      copy.lastBoughtDate = null;
+      copy.entries.forEach(e=>{ e.id = uid(); });
+      const idx = state.products.findIndex(p=>p.id===product.id);
+      state.products.splice(idx+1, 0, copy);
+      openCardId = copy.id;
+      saveState(); render();
+    });
+    toolbar.appendChild(dupItemBtn);
     if(product.entries.length>0){
       const allExpanded = product.entries.every(e=>expandedEntries.has(e.id));
-      const toolbar = document.createElement('div');
-      toolbar.className = 'entries-toolbar';
       const toggleAllBtn = document.createElement('button');
       toggleAllBtn.className = 'expand-all-btn';
       toggleAllBtn.textContent = allExpanded ? 'Collapse all' : 'Expand all';
@@ -1463,8 +1480,8 @@ function renderInner(){
         render();
       });
       toolbar.appendChild(toggleAllBtn);
-      entriesWrap.appendChild(toolbar);
     }
+    entriesWrap.appendChild(toolbar);
 
     for(const entry of sortedEntriesForDisplay(product)){
       entriesWrap.appendChild(renderEntry(product, entry, bestInfo));
@@ -1605,6 +1622,7 @@ function renderEntry(product, entry, bestInfo){
       <div class="left-btns">
         <button class="text-btn ${entry.usingNow?'using-active':''}" data-role="usingBtn">📦 ${entry.usingNow?'Using now':'Mark as using'}</button>
         <button class="text-btn ${entry.preferred?'pref-active':''}" data-role="preferredBtn">📌 ${entry.preferred?'Preferred':'Mark preferred'}</button>
+        <button class="text-btn" data-role="duplicateBtn">⧉ Duplicate</button>
         <button class="text-btn danger" data-role="deleteBtn">✕ Remove</button>
       </div>
       <button class="text-btn" data-role="collapseBtn">▴ Collapse</button>
@@ -1705,6 +1723,15 @@ function renderEntry(product, entry, bestInfo){
   });
   form.querySelector('[data-role="preferredBtn"]').addEventListener('click', ()=>{
     entry.preferred = !entry.preferred;
+    saveState(); render();
+  });
+  form.querySelector('[data-role="duplicateBtn"]').addEventListener('click', ()=>{
+    // Exact copy (tags included); original collapses so the copy opens right below it.
+    const copy = JSON.parse(JSON.stringify(entry));
+    copy.id = uid();
+    product.entries.push(copy);
+    expandedEntries.delete(entry.id);
+    expandedEntries.add(copy.id);
     saveState(); render();
   });
   form.querySelector('[data-role="deleteBtn"]').addEventListener('click', ()=>{
