@@ -1037,6 +1037,35 @@ async function saveState(){
   }
 }
 
+// Typing in number fields (price / qty / regular price) must NOT save, sync and
+// re-draw the whole list on every digit — that made the field lag and drop digits.
+// Instead: update state on each keystroke, save shortly after typing pauses, and
+// refresh the price line / sort order only once the field loses focus.
+let pendingSave = false, saveTimer = null, renderDirty = false;
+function saveStateSoon(){
+  pendingSave = true;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{ pendingSave = false; saveState(); }, 500);
+}
+function flushSave(){
+  if(!pendingSave) return;
+  clearTimeout(saveTimer);
+  pendingSave = false;
+  saveState();
+}
+function scheduleDirtyRender(){
+  // Small delay so a tap on a button (Collapse, tick, etc.) still lands before the list redraws.
+  setTimeout(()=>{
+    if(!renderDirty) return;
+    const a = document.activeElement;
+    // Moving straight to another field in the list? Wait — that field's blur will refresh.
+    if(a && a.closest && a.closest('#productList') && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return;
+    render();
+  }, 200);
+}
+window.addEventListener('pagehide', flushSave);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') flushSave(); });
+
 // --- Live sync between devices (e.g. you + your partner) via Firebase Realtime Database.
 // This only works once the page is hosted on a real domain (like GitHub Pages) — the
 // gstatic.com script it needs is blocked inside Claude's own sandboxed preview.
@@ -1076,6 +1105,20 @@ function updateSyncStatus(msg, isError){
 // lists like product.entries can come back as plain objects ({"0":..,"1":..})
 // after a round-trip. This converts any such "array-like" object back into a
 // real array, recursively, so .filter/.map/.forEach etc keep working.
+// Firebase returns keys sorted alphabetically and drops null values and empty
+// arrays, so comparing JSON.stringify(remote) with JSON.stringify(state) never
+// matched — every echo of our own save looked like a "remote change", replaced
+// the state and redrew the list mid-typing. This compares in a canonical form.
+function stableStringify(o){
+  if(Array.isArray(o)) return '[' + o.map(stableStringify).join(',') + ']';
+  if(o && typeof o === 'object'){
+    return '{' + Object.keys(o).sort()
+      .filter(k => o[k] !== null && o[k] !== undefined && !(Array.isArray(o[k]) && o[k].length===0))
+      .map(k => JSON.stringify(k) + ':' + stableStringify(o[k])).join(',') + '}';
+  }
+  return JSON.stringify(o);
+}
+
 function normalizeFirebaseArrays(obj){
   if(Array.isArray(obj)) return obj.map(normalizeFirebaseArrays);
   if(obj && typeof obj === 'object'){
@@ -1117,7 +1160,8 @@ function connectSync(config, isInitialLoad){
         try{
           const remote = normalizeFirebaseArrays(snapshot.val());
           if(!remote) return; // nothing remote yet — keep showing what we have
-          if(JSON.stringify(remote) === JSON.stringify(state)) return; // already in sync
+          if(pendingSave || renderDirty) return; // mid-typing — our own save will sync shortly
+          if(stableStringify(remote) === stableStringify(state)) return; // already in sync
 
           const candidate = remote;
           if(!Array.isArray(candidate.products)){
@@ -1282,6 +1326,7 @@ function escapeHtml(str){
 function escapeAttr(str){ return escapeHtml(str); }
 
 function render(){
+  renderDirty = false;
   const list = document.getElementById('productList');
   const previousHTML = list.innerHTML;
   try{
@@ -1666,16 +1711,23 @@ function renderEntry(product, entry, bestInfo){
     saveState(); render();
   });
 
-  form.querySelector('[data-role="price"]').addEventListener('input', e=>{
-    focusedField = { entryId: entry.id, role: 'price' };
-    entry.price = sanitizeNumericInput(e.target.value);
-    saveState(); render();
-  });
-  form.querySelector('[data-role="qty"]').addEventListener('input', e=>{
-    focusedField = { entryId: entry.id, role: 'qty' };
-    entry.qty = sanitizeNumericInput(e.target.value);
-    saveState(); render();
-  });
+  function wireNumericField(el, role, key){
+    el.addEventListener('input', e=>{
+      focusedField = { entryId: entry.id, role };
+      const clean = sanitizeNumericInput(e.target.value);
+      if(e.target.value !== clean) e.target.value = clean;
+      entry[key] = clean;
+      renderDirty = true;
+      saveStateSoon();
+    });
+    el.addEventListener('blur', ()=>{
+      if(focusedField && focusedField.entryId===entry.id && focusedField.role===role) focusedField = null;
+      flushSave();
+      scheduleDirtyRender();
+    });
+  }
+  wireNumericField(form.querySelector('[data-role="price"]'), 'price', 'price');
+  wireNumericField(form.querySelector('[data-role="qty"]'), 'qty', 'qty');
   form.querySelector('[data-role="unit"]').addEventListener('change', e=>{ entry.unit = e.target.value; saveState(); render(); });
   form.querySelector('[data-role="notes"]').addEventListener('change', e=>{ entry.notes = e.target.value; saveState(); });
 
@@ -1701,11 +1753,7 @@ function renderEntry(product, entry, bestInfo){
   });
   const regularPriceInput = form.querySelector('[data-role="regularPrice"]');
   if(regularPriceInput){
-    regularPriceInput.addEventListener('input', e=>{
-      focusedField = { entryId: entry.id, role: 'regularPrice' };
-      entry.regularPrice = sanitizeNumericInput(e.target.value);
-      saveState(); render();
-    });
+    wireNumericField(regularPriceInput, 'regularPrice', 'regularPrice');
   }
 
   form.querySelectorAll('.quality-buttons button').forEach(btn=>{
