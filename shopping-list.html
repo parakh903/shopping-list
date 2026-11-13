@@ -97,6 +97,11 @@ h1 .dot{color:var(--green);}
 .backup-banner button{flex-shrink:0;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;border-radius:8px;padding:7px 10px;cursor:pointer;}
 .backup-banner .bb-download{background:var(--amber);border:none;color:#1F2A1D;}
 .backup-banner .bb-dismiss{background:none;border:1px solid var(--amber);color:var(--amber-deep);}
+/* Restock reminder banner */
+.restock-banner{border-color:var(--danger);}
+.restock-banner .bb-text{color:var(--danger);}
+.restock-banner .bb-download{background:var(--danger);color:#fff;}
+.restock-banner .bb-dismiss{border-color:var(--danger);color:var(--danger);}
 
 /* Settings / Sort panels */
 .panel{
@@ -388,6 +393,12 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
     </div>
     <div class="stats-line" id="statsLine">Your ledger is empty</div>
 
+    <div class="backup-banner restock-banner" id="restockBanner">
+      <div class="bb-text" id="restockBannerText"></div>
+      <button class="bb-download" id="restockShowBtn">Show them</button>
+      <button class="bb-dismiss" id="restockDismissBtn">Not now</button>
+    </div>
+
     <div class="backup-banner" id="backupBanner">
       <div class="bb-text">📦 Time for your monthly backup<small>Downloads a full JSON backup + CSV</small></div>
       <button class="bb-download" id="backupBannerDownloadBtn">Download</button>
@@ -563,6 +574,9 @@ let openCardId = null;
 let expandedEntries = new Set(); // session-only UI state, not persisted
 let focusedField = null; // {entryId, role}
 let searchQuery = '';
+let restockOnly = false;          // banner's "Show them" filter (this session only)
+let restockDismissedDate = null;  // "Not now" for today; kept on this phone only, not synced
+const RESTOCK_DISMISS_KEY = 'shop-ledger-restock-dismissed';
 
 const unitOptions = ['g','kg','ml','L','ea'];
 const unitMeta = {
@@ -793,6 +807,26 @@ function getRestockStatus(product){
     return { state:'due-soon', daysRemaining, text: daysRemaining===1 ? 'Due tomorrow' : `Due in ${daysRemaining} days` };
   }
   return { state:'ok', daysRemaining, text: `Next check in ${daysRemaining} days` };
+}
+
+function isRestockDue(p){
+  const s = getRestockStatus(p);
+  return !!(s && s.state==='overdue'); // due today or overdue
+}
+
+// Banner at the top: how many items are due, with a button to show only those.
+function updateRestockBanner(){
+  const banner = document.getElementById('restockBanner');
+  if(!banner) return;
+  const n = state.products.filter(isRestockDue).length;
+  if(n===0) restockOnly = false;
+  const show = n>0 && (restockOnly || restockDismissedDate !== todayISO());
+  banner.classList.toggle('show', show);
+  const word = n===1 ? 'item' : 'items';
+  document.getElementById('restockBannerText').innerHTML = restockOnly
+    ? `🔔 Showing ${n} ${word} to restock<small>Tap “Show all” to see everything</small>`
+    : `🔔 ${n} ${word} to restock<small>Due today or overdue</small>`;
+  document.getElementById('restockShowBtn').textContent = restockOnly ? 'Show all' : 'Show them';
 }
 
 function fmt(n){
@@ -1153,6 +1187,10 @@ async function loadState(){
       state.settings.summaryTickMigrated = true; // brand-new data: nothing old to convert
     }
   }catch(e){ /* no existing data yet */ }
+  try{
+    const rd = await storageGet(RESTOCK_DISMISS_KEY);
+    if(rd && rd.value) restockDismissedDate = rd.value;
+  }catch(e){ /* nothing dismissed */ }
 
   document.getElementById('woolMonthly').value = state.settings.woolMonthly;
   document.getElementById('woolGiftcard').value = state.settings.woolGiftcard;
@@ -1492,6 +1530,7 @@ function renderInner(){
   renderChips();
   renderDatalists();
   updateStatsLine();
+  updateRestockBanner();
 
   const list = document.getElementById('productList');
   list.innerHTML = '';
@@ -1507,6 +1546,7 @@ function renderInner(){
   }
 
   let visibleProducts = state.products.filter(p=>productMatchesSearch(p, searchQuery));
+  if(restockOnly) visibleProducts = visibleProducts.filter(isRestockDue);
   visibleProducts = sortProducts(visibleProducts);
 
   if(visibleProducts.length===0){
@@ -2243,6 +2283,17 @@ document.getElementById('backupBannerDownloadBtn').addEventListener('click', ()=
 document.getElementById('testBackupBtn').addEventListener('click', ()=>{
   const res = downloadBothBackups();
   showToast(res.ok ? 'Backing up ✓ — JSON now, CSV in ~2.5s' : 'Could not create the backup file — try again.');
+});
+document.getElementById('restockShowBtn').addEventListener('click', ()=>{
+  restockOnly = !restockOnly;
+  render();
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+document.getElementById('restockDismissBtn').addEventListener('click', ()=>{
+  restockOnly = false;
+  restockDismissedDate = todayISO();
+  storageSet(RESTOCK_DISMISS_KEY, restockDismissedDate);
+  render();
 });
 document.getElementById('backupBannerDismissBtn').addEventListener('click', ()=>{
   state.settings.backupDismissedDate = todayISO();
