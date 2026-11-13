@@ -856,7 +856,7 @@ function priceCells(entry){
   const lbl = escapeHtml(calc.baseLabel);
   let paid = `<div style="color:#FF6B6B;font-weight:700;">${entry.onSpecial?'⭐️ ':''}${fmt(price)}</div>`;
   if(regularPrice) paid += `<div style="color:#FFA94D;font-weight:700;">${fmt(regularPrice)}</div>`;
-  let unit = `<div style="color:#FFD43B;font-weight:700;">${fmt(calc.raw)}/${lbl}</div>`;
+  let unit = `<div style="color:#74C0FC;font-weight:700;">${fmt(calc.raw)}/${lbl}</div>`;
   if(entry.isWool) unit += `<div style="color:#69DB7C;font-weight:700;">🟥 ${fmt(calc.eff)}/${lbl}</div>`;
   return { paid, unit };
 }
