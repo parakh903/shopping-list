@@ -640,7 +640,7 @@ function effectiveUnitPrice(entry){
 
 // Sub-item display order: grouped by unit family (so $/kg and $/ea entries
 // aren't interleaved), cheapest effective unit price first within each
-// family, entries with no computable price last. Ties keep entry order.
+// family (👎 entries last within their family), entries with no computable price last. Ties keep entry order.
 function sortEntriesForDisplay(entries){
   return [...entries].sort((a,b)=>{
     const ca = effectiveUnitPrice(a);
@@ -649,6 +649,9 @@ function sortEntriesForDisplay(entries){
     if(!ca) return 1;
     if(!cb) return -1;
     if(ca.family !== cb.family) return ca.family.localeCompare(cb.family);
+    // 👎 entries drop to the bottom of their unit family; among themselves they keep unit-price order
+    const badA = a.quality==='bad' ? 1 : 0, badB = b.quality==='bad' ? 1 : 0;
+    if(badA !== badB) return badA - badB;
     return ca.eff - cb.eff;
   });
 }
