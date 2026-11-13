@@ -336,6 +336,8 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
   opacity:0;transition:opacity .2s ease, transform .2s ease;pointer-events:none;z-index:50;
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.has-undo{pointer-events:auto;display:flex;align-items:center;gap:14px;width:max-content;max-width:92vw;}
+.toast-undo{background:none;border:none;color:#FFD43B;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:4px 2px;flex-shrink:0;}
 
 .modal-add-btn{background:var(--green);color:#fff;border:none;border-radius:10px;padding:0 20px;font-weight:600;font-size:22px;cursor:pointer;}
 .modal-add-btn:active{background:var(--green-deep);}
@@ -1440,8 +1442,30 @@ async function loadSyncConfig(){
 }
 
 let toastTimer;
+// Toast with an Undo button (stays ~7 seconds). Only one pending undo at a time.
+function showUndoToast(msg, undoFn){
+  const t = document.getElementById('toast');
+  t.innerHTML = '';
+  const span = document.createElement('span');
+  span.textContent = msg;
+  const btn = document.createElement('button');
+  btn.className = 'toast-undo';
+  btn.textContent = 'Undo';
+  btn.addEventListener('click', ()=>{
+    clearTimeout(toastTimer);
+    t.classList.remove('show','has-undo');
+    undoFn();
+  });
+  t.append(span, btn);
+  t.classList.add('show','has-undo');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show','has-undo'), 7000);
+}
+function shortName(n){ n = String(n||'').trim() || 'item'; return n.length>26 ? n.slice(0,25)+'…' : n; }
+
 function showToast(msg){
   const t = document.getElementById('toast');
+  t.classList.remove('has-undo');
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
@@ -1594,8 +1618,18 @@ function renderInner(){
     });
     head.querySelector('.del-product').addEventListener('click', (ev)=>{
       ev.stopPropagation();
+      const rowCount = product.entries.length;
+      if(!confirm(`Delete “${shortName(product.name)}”` + (rowCount ? ` and its ${rowCount} store/price row${rowCount===1?'':'s'}` : '') + '?')) return;
+      const removed = product;
+      const idx = state.products.findIndex(p=>p.id===product.id);
       state.products = state.products.filter(p=>p.id!==product.id);
       saveState(); render();
+      showUndoToast(`Deleted “${shortName(removed.name)}”`, ()=>{
+        if(state.products.some(p=>p.id===removed.id)) return;
+        state.products.splice(Math.min(Math.max(idx,0), state.products.length), 0, removed);
+        saveState(); render();
+        showToast('Restored ✓');
+      });
     });
     const nameInput = head.querySelector('.card-name');
     nameInput.addEventListener('click', e=>e.stopPropagation());
@@ -1892,9 +1926,22 @@ function buildEntryForm(product, entry){
     saveState(); render();
   });
   form.querySelector('[data-role="deleteBtn"]').addEventListener('click', ()=>{
+    const label = [entry.store, entry.brand].filter(Boolean).join(' · ') || 'this row';
+    if(!confirm(`Remove ${shortName(label)} from “${shortName(product.name)}”?`)) return;
+    const removed = entry;
+    const productId = product.id;
+    const idx = product.entries.findIndex(x=>x.id===entry.id);
     product.entries = product.entries.filter(x=>x.id!==entry.id);
     expandedEntries.delete(entry.id);
     saveState(); render();
+    showUndoToast(`Removed ${shortName(label)}`, ()=>{
+      const p = state.products.find(x=>x.id===productId);
+      if(!p){ showToast('Could not restore — the item was deleted'); return; }
+      if(p.entries.some(x=>x.id===removed.id)) return;
+      p.entries.splice(Math.min(Math.max(idx,0), p.entries.length), 0, removed);
+      saveState(); render();
+      showToast('Restored ✓');
+    });
   });
   form.querySelector('[data-role="collapseBtn"]').addEventListener('click', ()=>{
     expandedEntries.delete(entry.id);
@@ -2478,16 +2525,21 @@ document.getElementById('forcePullBtn').addEventListener('click', ()=>{
 document.getElementById('wipeAllBtn').addEventListener('click', ()=>{
   const count = state.products.length;
   if(count===0){ showToast('There\'s nothing to delete — your list is already empty.'); return; }
-  let msg = `This will permanently delete all ${count} item(s). This cannot be undone.`;
+  let msg = `This will delete all ${count} item(s). You will get an Undo button for a few seconds afterwards.`;
   if(syncing){
     msg += '\n\n⚠️ You are connected to a shared list — this will also erase it for anyone else connected (e.g. your wife\'s device), the moment they next sync.';
   }
   msg += '\n\nMake sure you have a CSV backup first if you want to keep this data. Continue?';
   if(!confirm(msg)) return;
+  const wiped = state.products;
   state.products = [];
   saveState(); // this also pushes the wipe to Firebase if connected, matching the warning above
   render();
-  showToast('All items deleted.');
+  showUndoToast(`All ${count} items deleted`, ()=>{
+    state.products = wiped.concat(state.products);
+    saveState(); render();
+    showToast('Restored ✓');
+  });
 });
 
 loadState();
