@@ -854,8 +854,8 @@ function priceCells(entry){
   if(!calc || !price) return null;
   const regularPrice = entry.onSpecial && entry.regularPrice ? Number(entry.regularPrice) : null;
   const lbl = escapeHtml(calc.baseLabel);
-  let paid = `<div style="color:#FF6B6B;font-weight:700;">${entry.onSpecial?'⭐️ ':''}${fmt(price)}</div>`;
-  if(regularPrice) paid += `<div style="color:#FFA94D;font-weight:700;">${fmt(regularPrice)}</div>`;
+  let paid = `<div style="color:#FF8A8A;font-weight:700;">${entry.onSpecial?'⭐️ ':''}${fmt(price)}</div>`;
+  if(regularPrice) paid += `<div style="color:#FFBC6B;font-weight:700;">${fmt(regularPrice)}</div>`;
   let unit = `<div style="color:#74C0FC;font-weight:700;">${fmt(calc.raw)}/${lbl}</div>`;
   if(entry.isWool) unit += `<div style="color:#69DB7C;font-weight:700;">🟥 ${fmt(calc.eff)}/${lbl}</div>`;
   return { paid, unit };
