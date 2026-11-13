@@ -199,7 +199,7 @@ body.dark .card.done .no-entries{
 }
 body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-shadow:none;}
 
-.card-head{display:flex;align-items:flex-start;gap:10px;padding:14px 14px;cursor:pointer;}
+.card-head{display:flex;align-items:flex-start;gap:10px;padding:14px 14px 10px;cursor:pointer;}
 .tick{
   width:24px;height:24px;border-radius:7px;border:1.5px solid var(--line);background:var(--input-bg);
   flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;
@@ -344,6 +344,30 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
   display:inline-flex;align-items:center;padding:0px 7px;border-radius:20px;
   font-weight:600;font-size:inherit;line-height:1.5;border:1.4px solid currentColor;background:transparent;
 }
+
+/* Single summary / sub-item table */
+.card-body{padding:0 14px 12px;cursor:pointer;}
+.card-body > * + *{margin-top:5px;}
+.sum-wrap{min-width:0;}
+.entries > .sum-wrap{padding:10px 14px 0;}
+.store-above{margin-bottom:6px;font-size:12px;line-height:1.6;}
+.sum-table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:10px;font-size:12px;color:var(--ink-soft);}
+.sum-table th{font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-faint);font-weight:600;text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);}
+.sum-table td{padding:7px 8px;vertical-align:top;border-top:1px solid var(--line);}
+.sum-table tbody tr:first-child td{border-top:none;}
+.sum-table .c-paid, .sum-table .c-unit{width:1%;white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.5;}
+.sum-table th.c-paid, .sum-table th.c-unit{font-family:'Inter',sans-serif;font-size:9.5px;}
+.sum-table .brandline{line-height:1.75;}
+.sum-table .brandline > *{vertical-align:middle;}
+.sum-table .brandline .placeholder{color:var(--ink-faint);font-style:italic;}
+.sum-table tr.sum-row.has-note td{padding-bottom:2px;}
+.sum-table tr.sum-row.open td{background:var(--form-bg);}
+.sum-table tr.note-row td{border-top:none;padding:0 8px 6px 14px;font-size:11px;color:var(--ink-faint);}
+.sum-table tr.divider td{padding:3px 8px;font-size:9.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-faint);text-align:center;}
+.sum-table tr.form-row td{padding:0;border-top:none;}
+.sum-table .entry-form{padding:2px 10px 12px;border-top:1px dashed var(--line);}
+.entries .add-entry-btn{border-top:none;padding:10px;}
+.entries-toolbar{padding:8px 14px 10px;}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -530,7 +554,8 @@ const DEFAULT_SETTINGS = {
   backupReminderDay: 1,
   backupReminderIntervalDays: 7,
   lastBackupDate: null,      // ISO date (yyyy-mm-dd) of the last downloaded backup
-  backupDismissedDate: null  // ISO date the banner was last dismissed, to keep it quiet the rest of that day
+  backupDismissedDate: null, // ISO date the banner was last dismissed, to keep it quiet the rest of that day
+  summaryTickMigrated: false // one-time flag (synced): old Preferred/Best/Using entries converted to "Show in summary" ticks
 };
 
 let state = { products: [], settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) };
@@ -601,9 +626,9 @@ function effectiveUnitPrice(entry){
 
 // Sub-item display order: grouped by unit family (so $/kg and $/ea entries
 // aren't interleaved), cheapest effective unit price first within each
-// family, entries with no computable price last.
-function sortedEntriesForDisplay(product){
-  return [...product.entries].sort((a,b)=>{
+// family, entries with no computable price last. Ties keep entry order.
+function sortEntriesForDisplay(entries){
+  return [...entries].sort((a,b)=>{
     const ca = effectiveUnitPrice(a);
     const cb = effectiveUnitPrice(b);
     if(!ca && !cb) return 0;
@@ -613,6 +638,7 @@ function sortedEntriesForDisplay(product){
     return ca.eff - cb.eff;
   });
 }
+function sortedEntriesForDisplay(product){ return sortEntriesForDisplay(product.entries); }
 
 function bestEntry(product){
   const byFamily = {};
@@ -818,43 +844,163 @@ function priceTrailInlineHTML(entry){
   return (struck ? struck + ' ' : '') + `<span class="best-price">${trail.finalText}</span> <span style="font-size:10.5px;color:var(--ink-faint);">(${trail.unitText})</span>`;
 }
 
-// Compact price line for the collapsed card summary. All segments are the
-// same size (no strikethrough) — colour is what distinguishes them:
-// red = the price you'd pay (with its discount symbol), orange = the original
-// price it was reduced from, yellow = unit price, green = the further-reduced
-// Woolworths member-discount unit price (🟥), separated by "|".
-function priceLineHTML(entry){
+// Price cells for the summary table. Colours: red = price paid (⭐️ if special),
+// orange = original price (only if special), yellow = unit price, green = the
+// Woolworths-effective unit price with 🟥 (only if the wool discount applies).
+// Returns null when the entry has no usable price yet.
+function priceCells(entry){
   const calc = effectiveUnitPrice(entry);
   const price = Number(entry.price);
-  if(!calc || !price) return `<span style="color:var(--ink-faint);">no price yet</span>`;
+  if(!calc || !price) return null;
   const regularPrice = entry.onSpecial && entry.regularPrice ? Number(entry.regularPrice) : null;
-
-  const segs = [];
-  segs.push(`<span style="color:#FF6B6B;font-weight:700;">${entry.onSpecial?'⭐️ ':''}${fmt(price)}</span>`);
-  if(regularPrice){
-    segs.push(`<span style="color:#FFA94D;font-weight:700;">${fmt(regularPrice)}</span>`);
-  }
-  segs.push(`<span style="color:#FFD43B;font-weight:700;">(${fmt(calc.raw)}/${escapeHtml(calc.baseLabel)})</span>`);
-  if(entry.isWool){
-    segs.push(`<span style="color:#69DB7C;font-weight:700;">🟥 (${fmt(calc.eff)}/${escapeHtml(calc.baseLabel)})</span>`);
-  }
-  return segs.join(`<span style="color:var(--ink-faint);margin:0 4px;">|</span>`);
+  const lbl = escapeHtml(calc.baseLabel);
+  let paid = `<div style="color:#FF6B6B;font-weight:700;">${entry.onSpecial?'⭐️ ':''}${fmt(price)}</div>`;
+  if(regularPrice) paid += `<div style="color:#FFA94D;font-weight:700;">${fmt(regularPrice)}</div>`;
+  let unit = `<div style="color:#FFD43B;font-weight:700;">${fmt(calc.raw)}/${lbl}</div>`;
+  if(entry.isWool) unit += `<div style="color:#69DB7C;font-weight:700;">🟥 ${fmt(calc.eff)}/${lbl}</div>`;
+  return { paid, unit };
 }
-function entryLineHTML(entry, tagSymbol, appendUsing){
-  const line1 = [];
-  if(tagSymbol) line1.push(`<span class="tag-symbol">${tagSymbol}</span>`);
-  line1.push(storePill(entry.store) + (entry.brand ? ' · '+brandPill(entry.brand) : ''));
-  if(entry.origin) line1.push(countryTag(entry.origin));
-  if(entry.quality) line1.push(qualityEmoji(entry.quality));
-  if(appendUsing) line1.push(`<span class="tag-symbol">📦</span>`);
 
-  const rows = [
-    `<div class="best-line-row1">${line1.join(' ')}</div>`,
-    `<div class="best-line-row2">${priceLineHTML(entry)}</div>`
-  ];
-  if(entry.notes) rows.push(`<div class="best-line-row3">↳ ${escapeHtml(entry.notes)}</div>`);
+// First column: store pill (unless shown once above the table) · brand pill,
+// then origin, quality emoji and 📦 (using) at the end.
+function brandCellHTML(entry, hideStore){
+  const parts = [];
+  if(hideStore){
+    parts.push(entry.brand ? brandPill(entry.brand) : `<span class="placeholder">no brand</span>`);
+  } else if(entry.store || entry.brand){
+    parts.push(storePill(entry.store) + (entry.brand ? ' · '+brandPill(entry.brand) : ''));
+  } else {
+    parts.push(`<span class="placeholder">Tap to add details</span>`);
+  }
+  if(entry.origin) parts.push(countryTag(entry.origin));
+  if(entry.quality) parts.push(qualityEmoji(entry.quality));
+  if(entry.usingNow) parts.push(`<span class="tag-symbol">📦</span>`);
+  return parts.join(' ');
+}
 
-  return rows.join('');
+// One table for a card. Collapsed: ticked ("Show in summary") rows only.
+// Expanded: ticked rows, a "Not in summary" divider, then unticked rows; tapping
+// a row opens its edit form directly underneath it.
+function buildSummaryTable(product, expanded){
+  const ticked = sortEntriesForDisplay(product.entries.filter(e=>e.preferred));
+  const unticked = expanded ? sortEntriesForDisplay(product.entries.filter(e=>!e.preferred)) : [];
+  const visible = ticked.concat(unticked);
+  if(visible.length===0) return null;
+
+  // Store-once rule, decided from the rows visible right now.
+  const storeKeys = new Set(visible.map(e=>(e.store||'').trim().toLowerCase()));
+  const sameStore = storeKeys.size===1 && !storeKeys.has('');
+
+  const wrap = document.createElement('div');
+  wrap.className = 'sum-wrap';
+  if(sameStore) wrap.insertAdjacentHTML('beforeend', `<div class="store-above">${storePill(visible[0].store)}</div>`);
+
+  const table = document.createElement('table');
+  table.className = 'sum-table';
+  table.innerHTML = `<thead><tr><th>${sameStore ? 'Brand' : 'Store · brand'}</th><th class="c-paid">Paid</th><th class="c-unit">Per unit</th></tr></thead>`;
+  const tbody = document.createElement('tbody');
+
+  const addRow = (entry)=>{
+    const rowOpen = expanded && expandedEntries.has(entry.id);
+    const tr = document.createElement('tr');
+    tr.className = 'sum-row' + (entry.notes ? ' has-note' : '') + (rowOpen ? ' open' : '');
+    const cells = priceCells(entry);
+    tr.innerHTML = `<td><div class="brandline">${brandCellHTML(entry, sameStore)}</div></td>` +
+      (cells
+        ? `<td class="c-paid">${cells.paid}</td><td class="c-unit">${cells.unit}</td>`
+        : `<td colspan="2"><span style="color:var(--ink-faint);">no price yet</span></td>`);
+    tbody.appendChild(tr);
+    if(entry.notes){
+      const nr = document.createElement('tr');
+      nr.className = 'note-row';
+      nr.innerHTML = `<td colspan="3">↳ ${escapeHtml(entry.notes)}</td>`;
+      tbody.appendChild(nr);
+    }
+    if(expanded){
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('click', ()=>{
+        if(expandedEntries.has(entry.id)) expandedEntries.delete(entry.id); else expandedEntries.add(entry.id);
+        render();
+      });
+      if(rowOpen){
+        const fr = document.createElement('tr');
+        fr.className = 'form-row';
+        const td = document.createElement('td');
+        td.colSpan = 3;
+        td.appendChild(buildEntryForm(product, entry));
+        fr.appendChild(td);
+        tbody.appendChild(fr);
+      }
+    }
+  };
+
+  ticked.forEach(addRow);
+  if(unticked.length){
+    const dr = document.createElement('tr');
+    dr.className = 'divider';
+    dr.innerHTML = `<td colspan="3">Not in summary</td>`;
+    tbody.appendChild(dr);
+    unticked.forEach(addRow);
+  }
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  return wrap;
+}
+
+function toggleCard(product){
+  openCardId = openCardId===product.id ? null : product.id;
+  render();
+}
+
+// Content shown under the item name: the summary table (collapsed only), plus the
+// item-level note and bought/restock lines. Returns null when there is nothing to show.
+function buildCardBody(product, isOpen, restockStatus){
+  const body = document.createElement('div');
+  body.className = 'card-body';
+  let any = false;
+  if(product.entries.length===0){
+    body.insertAdjacentHTML('beforeend', `<div class="no-entries" style="margin-top:0;">No prices added yet</div>`);
+    any = true;
+  } else if(!isOpen){
+    const t = buildSummaryTable(product, false);
+    if(t) body.appendChild(t);
+    else body.insertAdjacentHTML('beforeend', `<div class="no-entries" style="margin-top:0;">None selected</div>`);
+    any = true;
+  }
+  if(product.notes){
+    body.insertAdjacentHTML('beforeend', `<div class="no-entries" style="color:var(--ink-soft);font-style:normal;margin-top:5px;">📝 ${escapeHtml(product.notes)}</div>`);
+    any = true;
+  }
+  if(product.lastBoughtDate){
+    body.insertAdjacentHTML('beforeend', `<div class="no-entries" style="color:var(--ink-faint);font-style:normal;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px;">
+        <span>🗓 Bought ${relativeDateText(product.lastBoughtDate)}</span>
+        ${ restockStatus && restockStatus.state!=='ok' ? `<span class="restock-status ${restockStatus.state}">${restockStatus.state==='overdue'?'🔔 ':''}${restockStatus.text}</span>` : '' }
+      </div>`);
+    any = true;
+  }
+  if(!any) return null;
+  body.addEventListener('click', (ev)=>{
+    if(ev.target.closest('input,button,select,textarea')) return;
+    toggleCard(product);
+  });
+  return body;
+}
+
+// One-time migration: old "summary" rules (Preferred, cheapest in the headline unit
+// family, Using, entries without a price) become ticks on the reused `preferred`
+// field. A flag in the synced settings stops the second phone from repeating it.
+function migrateSummaryTicks(){
+  if(state.settings.summaryTickMigrated) return false;
+  state.products.forEach(p=>{
+    if(!Array.isArray(p.entries)) p.entries = [];
+    const info = bestEntry(p);
+    const headId = info && info.headline ? info.headline.entry.id : null;
+    p.entries.forEach(e=>{
+      e.preferred = !!(e.preferred || e.usingNow || e.id===headId || !effectiveUnitPrice(e));
+    });
+  });
+  state.settings.summaryTickMigrated = true;
+  return true;
 }
 
 function productMatchesSearch(product, q){
@@ -868,12 +1014,10 @@ function productMatchesSearch(product, q){
   );
 }
 
+// Store of the first table row (cheapest ticked entry) — used for sort-by-store.
 function storeOfProduct(product){
-  const preferred = product.entries.find(e=>e.preferred);
-  if(preferred && preferred.store) return preferred.store;
-  const info = bestEntry(product);
-  if(info && info.headline && info.headline.entry.store) return info.headline.entry.store;
-  return '';
+  const rows = sortEntriesForDisplay(product.entries.filter(e=>e.preferred));
+  return rows.length ? (rows[0].store || '') : '';
 }
 
 function compareBy(key, a, b){
@@ -996,13 +1140,17 @@ function applyStateShape(parsed){
       if(typeof e.origin !== 'string') e.origin = '';
     });
   });
+  return migrateSummaryTicks();
 }
 
 async function loadState(){
   try{
     const res = await storageGet(STORAGE_KEY);
     if(res && res.value){
-      applyStateShape(JSON.parse(res.value));
+      const migratedNow = applyStateShape(JSON.parse(res.value));
+      if(migratedNow) storageSet(STORAGE_KEY, JSON.stringify(state)); // save locally; synced copy updates on next save / sync
+    } else {
+      state.settings.summaryTickMigrated = true; // brand-new data: nothing old to convert
     }
   }catch(e){ /* no existing data yet */ }
 
@@ -1176,9 +1324,11 @@ function connectSync(config, isInitialLoad){
 
           applyingRemote = true;
           state = candidate;
+          const migratedNow = migrateSummaryTicks();
           render();
           storageSet(STORAGE_KEY, JSON.stringify(state)); // persist locally too, without pushing back up
           applyingRemote = false;
+          if(migratedNow) saveState(); // first phone to see old data converts it and shares the flag
         }catch(e){
           console.warn('Skipped a malformed sync update:', e);
         }
@@ -1375,59 +1525,17 @@ function renderInner(){
     const restockStatus = getRestockStatus(product);
     card.className = 'card' + (isOpen ? ' open' : '') + (product.tick ? ' done' : '') + (restockStatus && restockStatus.state==='overdue' ? ' needs-restock' : '');
 
-    const bestInfo = bestEntry(product);
-    const headline = bestInfo ? bestInfo.headline : null;
-    const preferredEntries = product.entries.filter(e=>e.preferred);
-    const preferredIds = new Set(preferredEntries.map(e=>e.id));
-    const headlineIsPreferred = !!(headline && preferredIds.has(headline.entry.id));
-    const usingEntry = product.entries.find(e=>e.usingNow) || null;
-    const usingIsPreferred = !!(usingEntry && preferredIds.has(usingEntry.id));
-    const usingIsHeadlineBest = !!(usingEntry && headline && headline.entry.id===usingEntry.id);
-    // Entries that don't have a valid price yet (so they can't be "Best") and
-    // aren't already shown as Preferred/Using — e.g. a just-added row where
-    // you've only filled in the store so far. Show them anyway, incomplete or not.
-    const shownIds = new Set([...preferredIds, headline && headline.entry.id, usingEntry && usingEntry.id].filter(Boolean));
-    const incompleteEntries = product.entries.filter(e => !shownIds.has(e.id) && !effectiveUnitPrice(e));
-
     const head = document.createElement('div');
     head.className = 'card-head';
     head.innerHTML = `
       <div class="tick ${product.tick?'checked':''}" data-role="productTick">${product.tick?'✓':''}</div>
       <div class="card-name-wrap">
         <input class="card-name" value="${escapeAttr(product.name)}" data-id="${product.id}" />
-        ${ preferredEntries.map((pe, i) => {
-            const isAlsoBest = !!(headline && headline.entry.id===pe.id);
-            const tag = '👌' + (isAlsoBest ? '💰' : '');
-            const isAlsoUsing = !!(usingEntry && usingEntry.id===pe.id);
-            return `
-          <div class="best-line" style="${i>0 ? 'margin-top:2px;' : ''}">
-            ${entryLineHTML(pe, tag, isAlsoUsing)}
-            ${ isAlsoBest && bestInfo.familyCount>1 ? `<span style="color:var(--ink-faint);">· different units below</span>` : '' }
-          </div>`;
-          }).join('') }
-        ${ headline && !headlineIsPreferred ? `
-          <div class="best-line" style="${preferredEntries.length ? 'margin-top:2px;' : ''}">
-            ${entryLineHTML(headline.entry, '💰', usingIsHeadlineBest)}
-            ${ bestInfo.familyCount>1 ? `<span style="color:var(--ink-faint);">· different units below</span>` : '' }
-          </div>` : '' }
-        ${ usingEntry && !usingIsPreferred && !usingIsHeadlineBest ? `
-          <div class="best-line" style="${(preferredEntries.length||headline) ? 'margin-top:2px;' : ''}">
-            ${entryLineHTML(usingEntry, '', true)}
-          </div>` : '' }
-        ${ incompleteEntries.map(e => `
-          <div class="best-line" style="${(preferredEntries.length||headline||usingEntry) ? 'margin-top:2px;' : ''}">
-            ${entryLineHTML(e, '', false)}
-          </div>`).join('') }
-        ${ product.entries.length===0 ? `<div class="no-entries">No prices added yet</div>` : '' }
-        ${ product.notes ? `<div class="no-entries" style="color:var(--ink-soft);font-style:normal;">📝 ${escapeHtml(product.notes)}</div>` : '' }
-        ${ product.lastBoughtDate ? `<div class="no-entries" style="color:var(--ink-faint);font-style:normal;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-              <span>🗓 Bought ${relativeDateText(product.lastBoughtDate)}</span>
-              ${ restockStatus && restockStatus.state!=='ok' ? `<span class="restock-status ${restockStatus.state}">${restockStatus.state==='overdue'?'🔔 ':''}${restockStatus.text}</span>` : '' }
-            </div>` : '' }
       </div>
       <button class="del-product" data-id="${product.id}" title="Delete item">✕</button>
       <span class="chev">▶</span>
     `;
+    const bodyEl = buildCardBody(product, isOpen, restockStatus);
     head.querySelector('[data-role="productTick"]').addEventListener('click', (ev)=>{
       ev.stopPropagation();
       product.tick = !product.tick;
@@ -1438,8 +1546,7 @@ function renderInner(){
     });
     head.addEventListener('click', (ev)=>{
       if(ev.target.closest('.del-product') || ev.target.closest('.card-name') || ev.target.closest('[data-role="productTick"]')) return;
-      openCardId = openCardId===product.id ? null : product.id;
-      render();
+      toggleCard(product);
     });
     head.querySelector('.del-product').addEventListener('click', (ev)=>{
       ev.stopPropagation();
@@ -1454,6 +1561,7 @@ function renderInner(){
     });
 
     card.appendChild(head);
+    if(bodyEl) card.appendChild(bodyEl);
 
     const entriesWrap = document.createElement('div');
     entriesWrap.className = 'entries';
@@ -1465,7 +1573,6 @@ function renderInner(){
       product.notes = e.target.value;
       saveState(); render();
     });
-    entriesWrap.appendChild(noteWrap);
 
     const dateWrap = document.createElement('div');
     dateWrap.className = 'item-date-wrap';
@@ -1478,7 +1585,6 @@ function renderInner(){
       product.lastBoughtDate = e.target.value || null;
       saveState(); render();
     });
-    entriesWrap.appendChild(dateWrap);
 
     const repeatWrap = document.createElement('div');
     repeatWrap.className = 'item-date-wrap';
@@ -1493,7 +1599,6 @@ function renderInner(){
       product.repurchaseDays = (val && val>0) ? val : null;
       saveState(); render();
     });
-    entriesWrap.appendChild(repeatWrap);
 
     const toolbar = document.createElement('div');
     toolbar.className = 'entries-toolbar';
@@ -1526,10 +1631,10 @@ function renderInner(){
       });
       toolbar.appendChild(toggleAllBtn);
     }
-    entriesWrap.appendChild(toolbar);
 
-    for(const entry of sortedEntriesForDisplay(product)){
-      entriesWrap.appendChild(renderEntry(product, entry, bestInfo));
+    if(isOpen){
+      const tbl = buildSummaryTable(product, true);
+      if(tbl) entriesWrap.appendChild(tbl);
     }
 
     const addBtn = document.createElement('button');
@@ -1537,12 +1642,16 @@ function renderInner(){
     addBtn.textContent = '+ Add store / price';
     addBtn.addEventListener('click', ()=>{
       const newEntry = { id: uid(), store:'', brand:'', price:'', qty:'', unit:'g', notes:'',
-        isWool:false, preferred:false, usingNow:false, onSpecial:false, regularPrice:'', quality:'', origin:'' };
+        isWool:false, preferred:true, usingNow:false, onSpecial:false, regularPrice:'', quality:'', origin:'' };
       product.entries.push(newEntry);
       expandedEntries.add(newEntry.id);
       saveState(); render();
     });
     entriesWrap.appendChild(addBtn);
+    entriesWrap.appendChild(noteWrap);
+    entriesWrap.appendChild(dateWrap);
+    entriesWrap.appendChild(repeatWrap);
+    entriesWrap.appendChild(toolbar);
 
     card.appendChild(entriesWrap);
     list.appendChild(card);
@@ -1551,53 +1660,9 @@ function renderInner(){
   restoreFocus();
 }
 
-function renderEntry(product, entry, bestInfo){
-  const wrap = document.createElement('div');
-  wrap.className = 'entry-wrap';
-
-  const calc = effectiveUnitPrice(entry);
-  const familyBest = calc && bestInfo ? bestInfo.byFamily[calc.family] : null;
-  const isBest = !!(calc && familyBest && familyBest.entry.id===entry.id);
+// Edit form shown directly under a table row when it is tapped.
+function buildEntryForm(product, entry){
   const isWoolworths = (entry.store||'').trim().toLowerCase()==='woolworths';
-  const isExpanded = expandedEntries.has(entry.id);
-  const regularCalc = entry.onSpecial && entry.regularPrice ? computeUnitPrice(entry.regularPrice, entry) : null;
-
-  // --- Compact row ---
-  const ec = document.createElement('div');
-  ec.className = 'ec';
-  ec.innerHTML = `
-    <div class="ec-tap" data-role="toggleExpand">
-      <div class="ec-line1">
-        ${ entry.preferred ? `<span class="tag-symbol">👌</span> ` : '' }
-        ${ isBest ? `<span class="tag-symbol">💰</span> ` : '' }
-        ${ entry.store || entry.brand
-          ? `<span>${storePill(entry.store)}${entry.brand ? ' · '+brandPill(entry.brand):''}</span>`
-          : `<span class="placeholder">Tap to add details</span>` }
-        ${ entry.origin ? `<span title="${escapeAttr(entry.origin)}">${countryTag(entry.origin)}</span>` : '' }
-        ${ entry.quality ? `<span>${qualityEmoji(entry.quality)}</span>` : '' }
-        ${ entry.usingNow ? `<span class="tag-symbol">📦</span>` : '' }
-      </div>
-      <div class="ec-line3">
-        ${ priceLineHTML(entry) }
-      </div>
-      ${ entry.notes ? `<div class="ec-line3" style="color:var(--ink-faint);font-size:11.5px;margin-left:10px;">↳ ${escapeHtml(entry.notes)}</div>` : '' }
-    </div>
-    <div class="ec-actions">
-      <button class="mini-icon-btn" data-role="deleteMini" title="Remove row">✕</button>
-    </div>
-  `;
-  ec.querySelector('[data-role="toggleExpand"]').addEventListener('click', ()=>{
-    if(isExpanded) expandedEntries.delete(entry.id); else expandedEntries.add(entry.id);
-    render();
-  });
-  ec.querySelector('[data-role="deleteMini"]').addEventListener('click', ()=>{
-    product.entries = product.entries.filter(x=>x.id!==entry.id);
-    expandedEntries.delete(entry.id);
-    saveState(); render();
-  });
-  wrap.appendChild(ec);
-
-  if(!isExpanded) return wrap;
 
   // --- Expanded form ---
   const form = document.createElement('div');
@@ -1666,7 +1731,7 @@ function renderEntry(product, entry, bestInfo){
     <div class="form-actions">
       <div class="left-btns">
         <button class="text-btn ${entry.usingNow?'using-active':''}" data-role="usingBtn">📦 ${entry.usingNow?'Using now':'Mark as using'}</button>
-        <button class="text-btn ${entry.preferred?'pref-active':''}" data-role="preferredBtn">📌 ${entry.preferred?'Preferred':'Mark preferred'}</button>
+        <button class="text-btn ${entry.preferred?'pref-active':''}" data-role="preferredBtn">📌 Show in summary${entry.preferred?' ✓':''}</button>
         <button class="text-btn" data-role="duplicateBtn">⧉ Duplicate</button>
         <button class="text-btn danger" data-role="deleteBtn">✕ Remove</button>
       </div>
@@ -1774,7 +1839,7 @@ function renderEntry(product, entry, bestInfo){
     saveState(); render();
   });
   form.querySelector('[data-role="duplicateBtn"]').addEventListener('click', ()=>{
-    // Exact copy (tags included); original collapses so the copy opens right below it.
+    // Exact copy (tick and Using included); original collapses so the copy opens for editing.
     const copy = JSON.parse(JSON.stringify(entry));
     copy.id = uid();
     product.entries.push(copy);
@@ -1792,8 +1857,7 @@ function renderEntry(product, entry, bestInfo){
     render();
   });
 
-  wrap.appendChild(form);
-  return wrap;
+  return form;
 }
 
 function closeAllPanels(){
@@ -1988,7 +2052,7 @@ function importFromCSV(text){
       quality: '',
       onSpecial: colSpecial!==-1 ? toBool(r[colSpecial]) : false,
       regularPrice: colRegular!==-1 ? sanitizeNumericInput(r[colRegular]) : '',
-      preferred: colPreferred!==-1 ? toBool(r[colPreferred]) : false,
+      preferred: colPreferred!==-1 ? toBool(r[colPreferred]) : true,
       usingNow: colUsing!==-1 ? toBool(r[colUsing]) : false,
       isWool: false
     };
@@ -2345,8 +2409,10 @@ document.getElementById('forcePullBtn').addEventListener('click', ()=>{
       state = remote;
       state.settings = Object.assign({}, DEFAULT_SETTINGS, state.settings || {});
       state.settings.sort = Object.assign({}, DEFAULT_SETTINGS.sort, state.settings.sort || {});
+      const pulledMigrated = migrateSummaryTicks();
       render();
       storageSet(STORAGE_KEY, JSON.stringify(state));
+      if(pulledMigrated) saveState();
       updateSyncStatus(`Pulled ${state.products.length} item(s) from the shared list.`, false);
     } else {
       updateSyncStatus('Nothing usable found in the shared list yet.', true);
