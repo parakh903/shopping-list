@@ -268,6 +268,8 @@ body.dark .card:not(.done) .card-name::placeholder{color:var(--ink-faint);text-s
 .restock-status.ok{color:var(--ink-faint);background:transparent;}
 .restock-status.due-soon{color:var(--amber-deep);background:var(--amber-soft);}
 .restock-status.overdue{color:#fff;background:var(--danger);}
+.bought-line .restock-status{margin-left:0;}
+.bought-line .restock-status.ok{padding-left:0;font-weight:500;font-size:12.5px;}
 .expand-all-btn{background:none;border:none;color:var(--green-deep);font-size:12px;font-weight:600;cursor:pointer;padding:4px 6px;}
 
 .entry-wrap{border-bottom:1px dashed var(--line);}
@@ -687,10 +689,7 @@ function updateStatsLine(){
   const total = state.products.length;
   if(total===0){ el.textContent = 'Your ledger is empty'; return; }
   const done = state.products.filter(p=>p.tick).length;
-  const dueCount = state.products.filter(p=>{
-    const s = getRestockStatus(p);
-    return s && s.state==='overdue';
-  }).length;
+  const dueCount = state.products.filter(isRestockDue).length;
   el.textContent = `${total} item${total===1?'':'s'} · ${done} done` + (dueCount>0 ? ` · 🔔 ${dueCount} to restock` : '');
 }
 
@@ -805,19 +804,32 @@ function getRestockStatus(product){
   const today = new Date(); today.setHours(0,0,0,0);
   const daysSince = Math.round((today - bought) / 86400000);
   const daysRemaining = product.repurchaseDays - daysSince;
+  const dueDate = new Date(bought); dueDate.setDate(dueDate.getDate() + product.repurchaseDays);
+  const dueLabel = dueDate.toLocaleDateString('en-AU',{day:'numeric',month:'short'});
   if(daysRemaining <= 0){
     const overdueBy = Math.abs(daysRemaining);
-    return { state:'overdue', daysRemaining, text: overdueBy===0 ? 'Due today' : `Overdue by ${overdueBy} day${overdueBy===1?'':'s'}` };
+    return { state:'overdue', daysRemaining, dueLabel, text: overdueBy===0 ? 'Due today' : `Overdue by ${overdueBy} day${overdueBy===1?'':'s'}` };
   }
   if(daysRemaining <= 2){
-    return { state:'due-soon', daysRemaining, text: daysRemaining===1 ? 'Due tomorrow' : `Due in ${daysRemaining} days` };
+    return { state:'due-soon', daysRemaining, dueLabel, text: daysRemaining===1 ? 'Due tomorrow' : `Due in ${daysRemaining} days` };
   }
-  return { state:'ok', daysRemaining, text: `Next check in ${daysRemaining} days` };
+  return { state:'ok', daysRemaining, dueLabel, text: `Next check in ${daysRemaining} days` };
 }
 
+// Whole days since a yyyy-mm-dd date (0 = today). Null if the date is missing/invalid.
+function daysSinceISO(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00');
+  if(isNaN(d.getTime())) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((today - d) / 86400000);
+}
+
+// One rule used by the header count, the banner and "Show them": due today or
+// overdue AND still ticked. Unticked due items are already on the to-buy list.
 function isRestockDue(p){
   const s = getRestockStatus(p);
-  return !!(s && s.state==='overdue'); // due today or overdue
+  return !!(p.tick && s && s.state==='overdue');
 }
 
 // Banner at the top: how many items are due, with a button to show only those.
@@ -1012,10 +1024,21 @@ function buildCardBody(product, isOpen, restockStatus){
     any = true;
   }
   if(product.lastBoughtDate){
-    body.insertAdjacentHTML('beforeend', `<div class="no-entries" style="color:var(--ink-faint);font-style:normal;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px;">
-        <span>🗓 Bought ${relativeDateText(product.lastBoughtDate)}</span>
-        ${ restockStatus && restockStatus.state!=='ok' ? `<span class="restock-status ${restockStatus.state}">${restockStatus.state==='overdue'?'🔔 ':''}${restockStatus.text}</span>` : '' }
-      </div>`);
+    const boughtD = new Date(product.lastBoughtDate + 'T00:00:00');
+    const boughtShort = isNaN(boughtD.getTime()) ? '' : boughtD.toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+    let line;
+    if(restockStatus && boughtShort){
+      // Bought date + when it's due again, in one line. Grey = fine, amber = within 2 days, red = due/overdue.
+      const dr = restockStatus.daysRemaining;
+      const dueText = restockStatus.state==='overdue'
+        ? (dr===0 ? 'Due today' : restockStatus.text)
+        : `Due in ${dr} day${dr===1?'':'s'} (${restockStatus.dueLabel})`;
+      const duePrefix = restockStatus.state==='overdue' ? '🔔 ' : '';
+      line = `<span>🗓 Bought ${boughtShort} ·</span><span class="restock-status ${restockStatus.state}">${duePrefix}${dueText}</span>`;
+    } else {
+      line = `<span>🗓 Bought ${relativeDateText(product.lastBoughtDate)}</span>`;
+    }
+    body.insertAdjacentHTML('beforeend', `<div class="no-entries bought-line" style="color:var(--ink-faint);font-style:normal;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px;">${line}</div>`);
     any = true;
   }
   if(!any) return null;
@@ -1463,13 +1486,13 @@ function showUndoToast(msg, undoFn){
 }
 function shortName(n){ n = String(n||'').trim() || 'item'; return n.length>26 ? n.slice(0,25)+'…' : n; }
 
-function showToast(msg){
+function showToast(msg, ms){
   const t = document.getElementById('toast');
   t.classList.remove('has-undo');
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>t.classList.remove('show'), 1600);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), ms || 1600);
 }
 
 function updateCombinedLabel(){
@@ -1606,11 +1629,16 @@ function renderInner(){
     const bodyEl = buildCardBody(product, isOpen, restockStatus);
     head.querySelector('[data-role="productTick"]').addEventListener('click', (ev)=>{
       ev.stopPropagation();
+      const wasDueInList = restockOnly && isRestockDue(product); // viewing the due-only list and this card is in it
       product.tick = !product.tick;
       if(product.tick){
-        product.lastBoughtDate = todayISO(); // stamp today; unticking doesn't clear it — it's purchase history
+        // stamp today; unticking doesn't clear it — it's purchase history.
+        // Re-ticking within 2 days of the saved date (untick by mistake) keeps the original date.
+        const ago = daysSinceISO(product.lastBoughtDate);
+        if(ago===null || ago<0 || ago>2) product.lastBoughtDate = todayISO();
       }
       saveState(); render();
+      if(wasDueInList && !product.tick) showToast('Moved to your to-buy list', 2600);
     });
     head.addEventListener('click', (ev)=>{
       if(ev.target.closest('.del-product') || ev.target.closest('.card-name') || ev.target.closest('[data-role="productTick"]')) return;
